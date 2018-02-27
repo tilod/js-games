@@ -4,5 +4,14 @@
   "main": "src/index.js",
   "repository": "",
   "author": "Tilo Dietrich",
-  "license": "MIT"
+  "license": "MIT",
+  "scripts": {
+    "build": "webpack",
+    "build-server": "webpack-serve --config webpack.config.js --content ./dist/"
+  },
+  "devDependencies": {
+    "webpack": "3",
+    "webpack-serve": "^0.1.4"
+  },
+  "dependencies": {}
 }
