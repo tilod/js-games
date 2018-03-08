@@ -7,7 +7,7 @@
   "license": "MIT",
   "scripts": {
     "build": "webpack --mode development",
-    "build-server": "webpack-serve"
+    "build-server": "webpack-serve --content ./dist/"
   },
   "devDependencies": {
     "webpack": "^4.1.1",
