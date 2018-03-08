@@ -23,7 +23,17 @@ const AClosure = (value) => {
 const suite = new Benchmark.Suite;
 
 suite
-  .add('Class test', () => new AClass(7).doSomething(12))
-  .add('Closure test', () => AClosure(7).doSomething(12))
+  .add('Class test', () => {
+    const instance = new AClass(7);
+    instance.doSomething(12);
+    instance.doSomething(30);
+    instance.doSomething(4);
+  })
+  .add('Closure test', () => {
+    const closure = AClosure(7);
+    closure.doSomething(12);
+    closure.doSomething(30);
+    closure.doSomething(4);
+  })
   .on('cycle', event => console.log(String(event.target)))
   .run();
