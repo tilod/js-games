@@ -1,108 +1,96 @@
 import MathHelper from './math-helper.js';
 
-const Pointer = (key) => {
-  const RADIUS = 100;
-  const SPEED = 200;
+class Pointer {
+  static RADIUS = 100;
+  static SPEED = 200;
 
-  const element = document.createElement('div');
+  constructor() {
+    this.element = document.createElement('div');
 
-  let rotation = 0;
-  let positionX = RADIUS;
-  let positionY = RADIUS;
-  let heading = Math.PI / 4; // 45°
+    this.rotation = 0;
+    this.positionX = Pointer.RADIUS;
+    this.positionY = Pointer.RADIUS;
+    this.heading = Math.PI / 4; // 45°
 
-  // initialize ----------------------------------------------------------------
-
-  element.innerHTML = '&uarr;';
-  element.style.backgroundColor = 'darkblue';
-  element.style.borderRadius = '50%';
-  element.style.color = 'white';
-  element.style.fontFamily = 'Helvetica Neue';
-  element.style.left = '0';
-  element.style.position = 'absolute';
-  element.style.textAlign = 'center';
-  element.style.top = '0';
-  document.body.appendChild(element);
-
-  // public --------------------------------------------------------------------
-
-  const update = (step, height) => {
-    catchResize(height);
-    rotate(step);
-    translate(step, height);
-  };
-
-  const draw = (scale) => {
-    const drawSize = RADIUS * 2 * scale;
-    const drawX = (positionX - RADIUS) * scale;
-    const drawY = document.documentElement.clientHeight - ((positionY + RADIUS) * scale);
-
-    element.style.height = `${drawSize}px`;
-    element.style.width =`${drawSize}px`;
-    element.style.lineHeight = `${drawSize}px`;
-    element.style.fontSize = `${drawSize * 0.8}px`;
-    element.style.transform = `translateX(${drawX}px) translateY(${drawY}px) rotateZ(${rotation}deg)`;
-  };
-
-  const die = () => {
-    element.parentNode.removeChild(element);
-  };
-
-  // private -------------------------------------------------------------------
-
-  const _key = () => {
-    return key;
-  };
-
-  const catchResize = (height) => {
-    if (positionY > height - RADIUS) positionY = height - RADIUS;
+    this.element.innerHTML = '&uarr;';
+    this.element.style.backgroundColor = 'darkblue';
+    this.element.style.borderRadius = '50%';
+    this.element.style.color = 'white';
+    this.element.style.fontFamily = 'Helvetica Neue';
+    this.element.style.left = '0';
+    this.element.style.position = 'absolute';
+    this.element.style.textAlign = 'center';
+    this.element.style.top = '0';
+    document.body.appendChild(this.element);
   }
 
-  const rotate = (step) => {
-    const angle = step / (1000 / SPEED);
+  update(step, height) {
+    this.catchResize(height);
+    this.rotate(step);
+    this.translate(step, height);
+  }
 
-    rotation += angle;
-    if (rotation >= 360) rotation -= 360;
-  };
+  draw(scale) {
+    const drawSize = Pointer.RADIUS * 2 * scale;
+    const drawX = (this.positionX - Pointer.RADIUS) * scale;
+    const drawY = document.documentElement.clientHeight - ((this.positionY + Pointer.RADIUS) * scale);
 
-  const translate = (step, height) => {
-    const distance = step / (1000 / SPEED);
+    this.element.style.height = `${drawSize}px`;
+    this.element.style.width =`${drawSize}px`;
+    this.element.style.lineHeight = `${drawSize}px`;
+    this.element.style.fontSize = `${drawSize * 0.8}px`;
+    this.element.style.transform = `translateX(${drawX}px) translateY(${drawY}px) rotateZ(${this.rotation}deg)`;
+  }
 
-    const projectedPosX = calculatePosX(distance);
-    const projectedPosY = calculatePosY(distance);
-    const newHeading = bounceOfWalls(projectedPosX, projectedPosY, height);
+  // private
 
-    if (newHeading === heading) {
-      positionX = projectedPosX;
-      positionY = projectedPosY;
+  catchResize(height) {
+    if (this.positionY > height - Pointer.RADIUS) this.positionY = height - Pointer.RADIUS;
+  }
+
+  rotate(step) {
+    const angle = step / (1000 / Pointer.SPEED);
+
+    this.rotation += angle;
+    if (this.rotation >= 360) this.rotation -= 360;
+  }
+
+  translate(step, height) {
+    const distance = step / (1000 / Pointer.SPEED);
+
+    const projectedPosX = this.calculatePosX(distance);
+    const projectedPosY = this.calculatePosY(distance);
+    const newHeading = this.bounceOfWalls(projectedPosX, projectedPosY, height);
+
+    if (newHeading === this.heading) {
+      this.positionX = projectedPosX;
+      this.positionY = projectedPosY;
     } else {
-      heading = newHeading;
-      positionX = calculatePosX(distance);
-      positionY = calculatePosY(distance);
+      this.heading = newHeading;
+      this.positionX = this.calculatePosX(distance);
+      this.positionY = this.calculatePosY(distance);
     }
-  };
+  }
 
-  const calculatePosX = (distance) => {
-    return positionX + Math.cos(heading) * distance;
-  };
+  calculatePosX(distance) {
+    return this.positionX + Math.cos(this.heading) * distance;
+  }
 
-  const calculatePosY = (distance) => {
-    return positionY + Math.sin(heading) * distance;
-  };
+  calculatePosY(distance) {
+    return this.positionY + Math.sin(this.heading) * distance;
+  }
 
-  const bounceOfWalls = (posX, posY, height) => {
-    let newHeading = heading;
+  bounceOfWalls(posX, posY, height) {
+    let newHeading = this.heading;
 
-    if (posX < RADIUS || posX > (1000 - RADIUS))
+    if (posX < Pointer.RADIUS || posX > (1000 - Pointer.RADIUS))
       newHeading = MathHelper.rad540 - newHeading;
 
-    if (posY < RADIUS || posY > (height - RADIUS))
+    if (posY < Pointer.RADIUS || posY > (height - Pointer.RADIUS))
       newHeading = MathHelper.rad360 - newHeading;
 
     return newHeading;
-  };
-
-  return { update, draw, die };
+  }
 }
 
 export default Pointer;

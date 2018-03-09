@@ -1,17 +1,11 @@
-const Board = () => {
-  let element = document.body;
+class Board {
+  constructor() {
+    this.element = document.body;
+    this.element.style.backgroundColor = 'lightblue';
+  }
 
-  // initialize ----------------------------------------------------------------
-
-  element.style.backgroundColor = 'lightblue';
-
-  // public --------------------------------------------------------------------
-
-  const update = () => {};
-
-  const draw = () => {};
-
-  return { update, draw };
-};
+  update() {}
+  draw() {}
+}
 
 export default Board;

@@ -3,8 +3,8 @@ import BrowserWindow from './browser-window.js';
 import Pointer from './pointer.js';
 import Scene from './scene.js';
 
-const browserWindow = BrowserWindow();
-const scene = Scene();
+const browserWindow = new BrowserWindow();
+const scene = new Scene();
 scene.spawn('board', Board);
 scene.spawn('pointer', Pointer);
 

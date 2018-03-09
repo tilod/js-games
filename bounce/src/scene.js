@@ -1,25 +1,19 @@
-const Scene = () => {
-  let items = new Map();
-
-  const spawn = (key, construct) => {
-    items.set(key, construct(key));
-  };
-
-  const kill = (key) => {
-    item = item.get(key);
-    if (item && item.die) item.die();
-    items.delete(key);
-  };
-
-  const update = (step, height) => {
-    items.forEach(item => item.update(step, height));
-  };
-
-  const draw = (scale) => {
-    items.forEach(item => item.draw(scale));
+class Scene {
+  constructor() {
+    this.items = new Map();
   }
 
-  return { spawn, kill, update, draw };
-};
+  spawn(key, construct) {
+    this.items.set(key, new construct(key));
+  }
+
+  update(step, height) {
+    this.items.forEach(item => item.update(step, height));
+  }
+
+  draw(scale) {
+    this.items.forEach(item => item.draw(scale));
+  }
+}
 
 export default Scene;

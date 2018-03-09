@@ -1,15 +1,15 @@
-const BrowserWindow = () => {
-  let html = document.documentElement;
-
-  const scale = () => {
-    return html.scrollWidth / 1000;
+class BrowserWindow {
+  constructor() {
+    this.html = document.documentElement;
   }
 
-  const normalizedHeight = () => {
-    return 1000 * (html.clientHeight / html.clientWidth);
-  };
+  scale() {
+    return this.html.scrollWidth / 1000;
+  }
 
-  return { scale, normalizedHeight };
-};
+  normalizedHeight() {
+    return 1000 * (this.html.clientHeight / this.html.clientWidth);
+  }
+}
 
 export default BrowserWindow;
