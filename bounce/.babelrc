@@ -1,4 +1,8 @@
 {
-  "presets": ["env"],
+  "presets": [
+    ["env", {
+      "targets": { "chrome": 64, "safari": 11 }
+    }]
+  ],
   "plugins": ["transform-class-properties"]
 }
