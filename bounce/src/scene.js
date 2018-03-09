@@ -3,8 +3,8 @@ class Scene {
     this.items = new Map();
   }
 
-  spawn(key, construct) {
-    this.items.set(key, new construct(key));
+  spawn(key, klass) {
+    this.items.set(key, new klass(key));
   }
 
   update(step, height) {
