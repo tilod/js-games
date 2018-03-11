@@ -16,7 +16,7 @@ new Benchmark.Suite()
   })
   .add('for with index', () => {
     let sum = 0;
-    for (let j = 0; j < 100; ++j) sum += array[j];
+    for (let j = 0; j < array.length; ++j) sum += array[j];
     return sum;
   })
   .on('cycle', event => console.log(String(event.target)))
