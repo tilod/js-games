@@ -1,18 +1,24 @@
+import BrowserWindow from './browser-window.js';
+import View from './view';
+
 class Scene {
   constructor() {
     this.items = new Map();
+
+    this.browserWindow = new BrowserWindow();
+    this.view = new View();
   }
 
   spawn(key, klass) {
     this.items.set(key, new klass(key));
   }
 
-  update(step, height) {
-    this.items.forEach(item => item.update(step, height));
-  }
+  update(step) {
+    this.items.forEach(item =>
+      item.update(step, this.browserWindow.normalizedHeight())
+    );
 
-  draw(scale) {
-    this.items.forEach(item => item.draw(scale));
+    this.view.draw(this.items.values(), this.browserWindow.scale());
   }
 }
 
