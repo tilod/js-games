@@ -31,34 +31,34 @@ class WithInnerClass {
 }
 
 new Benchmark.Suite()
-  .add('no class', () => {
+  .add('no class ---', () => {
     const zero = 2;
     const one = 4;
     const two = 8;
     return zero + one + two + zero;
   })
-  .add('direct assignment  ', () => {
+  .add('direct assignment ---', () => {
     const directAssignment = new WithDirectAssignment(2, 4, 8);
     return directAssignment.zero +
       directAssignment.one +
       directAssignment.two +
       directAssignment.zero;
   })
-  .add('array              ', () => {
+  .add('array ---', () => {
     const withArray = new WithArray(2, 4, 8);
     return withArray.array[0] +
       withArray.array[1] +
       withArray.array[2] +
       withArray.array[0];
   })
-  .add('object             ', () => {
+  .add('object ---', () => {
     const withObject = new WithObject(2, 4, 8);
     return withObject.object.zero +
       withObject.object.one +
       withObject.object.two +
       withObject.object.zero;
   })
-  .add('class              ', () => {
+  .add('class ---', () => {
     const withInnerClass = new WithInnerClass(2, 4, 8);
     return withInnerClass.innerClass.zero +
       withInnerClass.innerClass.one +

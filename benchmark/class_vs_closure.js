@@ -21,13 +21,13 @@ const AClosure = (value) => {
 }
 
 new Benchmark.Suite()
-  .add('class    ', () => {
+  .add('class ---', () => {
     const instance = new AClass(7);
     instance.doSomething(12);
     instance.doSomething(30);
     instance.doSomething(4);
   })
-  .add('closure  ', () => {
+  .add('closure ---', () => {
     const closure = AClosure(7);
     closure.doSomething(12);
     closure.doSomething(30);
