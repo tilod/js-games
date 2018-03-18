@@ -8,7 +8,15 @@ class BrowserWindow {
   }
 
   normalizedHeight() {
-    return 1000 * (this.html.clientHeight / this.html.clientWidth);
+    return 1000 * (this.viewportHeight() / this.viewportWidth());
+  }
+
+  viewportWidth() {
+    return this.html.clientWidth;
+  }
+
+  viewportHeight() {
+    return this.html.clientHeight;
   }
 }
 

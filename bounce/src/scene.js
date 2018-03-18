@@ -18,7 +18,11 @@ class Scene {
       item.update(step, this.browserWindow.normalizedHeight())
     );
 
-    this.view.draw(this.items.values(), this.browserWindow.scale());
+    this.view.draw(
+      this.items.values(),
+      this.browserWindow.scale(),
+      this.browserWindow.viewportHeight()
+    );
   }
 }
 

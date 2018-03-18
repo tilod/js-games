@@ -1,6 +1,6 @@
 class View {
-  draw(items, scale) {
-    for (let item of items) item.draw(scale);
+  draw(items, scale, viewportHeight) {
+    for (let item of items) item.draw(scale, viewportHeight);
   }
 }
 
