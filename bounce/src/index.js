@@ -1,16 +1,13 @@
-import Board from './board.js';
-import BrowserWindow from './browser-window.js';
-import Pointer from './pointer.js';
-import Scene from './scene.js';
+import Ball from './world/ball';
+import Board from './world/board';
+import Scene from './scene';
 
-const browserWindow = new BrowserWindow();
 const scene = new Scene();
 scene.spawn('board', Board);
-scene.spawn('pointer', Pointer);
+scene.spawn('ball', Ball);
 
 const loop = (timestamp) => {
-  scene.update(timestamp - lastRender, browserWindow.normalizedHeight());
-  scene.draw(browserWindow.scale());
+  scene.update(timestamp - lastRender);
 
   lastRender = timestamp;
   window.requestAnimationFrame(loop);

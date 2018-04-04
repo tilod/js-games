@@ -11,7 +11,7 @@ class AClass {
   }
 }
 
-// Closure
+// closure
 const AClosure = (value) => {
   const doSomething = (other) => {
     return value + other;
@@ -20,16 +20,14 @@ const AClosure = (value) => {
   return { doSomething };
 }
 
-const suite = new Benchmark.Suite;
-
-suite
-  .add('Class test', () => {
+new Benchmark.Suite()
+  .add('class ---', () => {
     const instance = new AClass(7);
     instance.doSomething(12);
     instance.doSomething(30);
     instance.doSomething(4);
   })
-  .add('Closure test', () => {
+  .add('closure ---', () => {
     const closure = AClosure(7);
     closure.doSomething(12);
     closure.doSomething(30);
