@@ -1,5 +1,5 @@
 import MathHelper from '../math-helper';
-import RoundTextSprite from '../view/round-text-sprite';
+import TextSprite from '../view/text-sprite';
 
 class Ball {
   static RADIUS = 100;
@@ -11,8 +11,9 @@ class Ball {
     this.positionY = Ball.RADIUS;
     this.heading = Math.PI / 4; // 45°
 
-    this.view = new RoundTextSprite({
+    this.view = new TextSprite({
       backgroundColor: 'darkblue',
+      borderRadius: '50%',
       textColor: 'white',
       fontFamily: 'Helvetica Neue',
       text: '&uarr;'

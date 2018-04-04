@@ -1,7 +1,7 @@
-import BrowserWindow from './browser-window.js';
-import View from './view';
+import BrowserWindow from './browser-window';
+import View from '../view';
 
-class Scene {
+class World {
   constructor() {
     this.items = new Map();
 
@@ -10,7 +10,7 @@ class Scene {
   }
 
   spawn(key, klass) {
-    this.items.set(key, new klass(key));
+    this.items.set(key, new klass());
   }
 
   update(step) {
@@ -26,4 +26,4 @@ class Scene {
   }
 }
 
-export default Scene;
+export default World;
