@@ -1,7 +1,7 @@
 {
   "presets": [
     ["env", {
-      "targets": { "chrome": 65, "safari": 11 }
+      "targets": { "chrome": 67, "safari": 11 }
     }]
   ],
   "plugins": ["transform-class-properties"]
