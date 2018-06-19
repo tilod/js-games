@@ -12,18 +12,18 @@ class Sprite {
     document.body.appendChild(this.element);
   }
 
-  draw(positionX, positionY, rotation, radius, scale, viewportHeight) {
+  draw(position, rotation, radius, scale, viewportHeight) {
     const drawSize = radius * 2 * scale;
-    const drawX = (positionX - radius) * scale;
-    const drawY = viewportHeight - ((positionY + radius) * scale);
+    const drawX = (position.x - radius) * scale;
+    const drawY = viewportHeight - ((position.y + radius) * scale);
 
-    this.updateElement(drawSize, drawX, drawY, rotation);
+    this.updateElement(drawSize, drawX, drawY);
   }
 
-  updateElement(drawSize, drawX, drawY, rotation) {
+  updateElement(drawSize, drawX, drawY) {
     this.element.style.height = `${drawSize}px`;
     this.element.style.width =`${drawSize}px`;
-    this.element.style.transform = `translate(${drawX}px, ${drawY}px) rotate(${rotation}deg)`;
+    this.element.style.transform = `translate(${drawX}px, ${drawY}px) rotate(0deg)`;
   }
 }
 

@@ -1,37 +1,37 @@
-import MathHelper from '../math-helper';
-import TextSprite from '../view/text-sprite';
+import Point2D from '../geometry/point2d';
+import Sprite from '../view/sprite';
 
 class Ball {
-  static RADIUS = 100;
-  static SPEED = 200;
+  constructor({
+    size = 100,
+    position = [Ball.RADIUS, Ball.RADIUS],
+    heading = [1, 1],
+    view
+  }) {
+    this.size = size;
+    this.position = new Point2D(position[0], position[1]);
+    this.heading = new Point2D(heading[0], heading[1]);
 
-  constructor() {
-    this.rotation = 0;
-    this.positionX = Ball.RADIUS;
-    this.positionY = Ball.RADIUS;
-    this.heading = Math.PI / 4; // 45°
+    this.view =
+      new Sprite(Object.assign({
+        backgroundColor: 'red',
+        borderRadius: '50%'
+      }, view));
 
-    this.view = new TextSprite({
-      backgroundColor: 'darkblue',
-      borderRadius: '50%',
-      textColor: 'white',
-      fontFamily: 'Helvetica Neue',
-      text: '&uarr;'
-    });
+    this.colliding = false;
   }
 
   update(step, height) {
     this.catchResize(height);
-    this.rotate(step);
-    this.translate(step, height);
+    this.translate(step);
+    this.bounceOfWalls(height);
   }
 
   draw(scale, viewportHeight) {
     this.view.draw(
-      this.positionX,
-      this.positionY,
-      this.rotation,
-      Ball.RADIUS,
+      this.position,
+      this.heading,
+      this.size,
       scale,
       viewportHeight
     );
@@ -40,51 +40,20 @@ class Ball {
   // private
 
   catchResize(height) {
-    if (this.positionY > height - Ball.RADIUS) this.positionY = height - Ball.RADIUS;
+    if (this.position.y > height - this.size)
+      this.position.y = height - this.size;
   }
 
-  rotate(step) {
-    const angle = step / (1000 / Ball.SPEED);
-
-    this.rotation += angle;
-    if (this.rotation >= 360) this.rotation -= 360;
+  translate(step) {
+    this.position = this.position.add(this.heading.multiply(step / 10));
   }
 
-  translate(step, height) {
-    const distance = step / (1000 / Ball.SPEED);
+  bounceOfWalls(height) {
+    if (this.position.x < this.size || this.position.x > (1000 - this.size))
+      this.heading = this.heading.mirrorHorizontal();
 
-    const projectedPosX = this.calculatePosX(distance);
-    const projectedPosY = this.calculatePosY(distance);
-    const newHeading = this.bounceOfWalls(projectedPosX, projectedPosY, height);
-
-    if (newHeading === this.heading) {
-      this.positionX = projectedPosX;
-      this.positionY = projectedPosY;
-    } else {
-      this.heading = newHeading;
-      this.positionX = this.calculatePosX(distance);
-      this.positionY = this.calculatePosY(distance);
-    }
-  }
-
-  calculatePosX(distance) {
-    return this.positionX + Math.cos(this.heading) * distance;
-  }
-
-  calculatePosY(distance) {
-    return this.positionY + Math.sin(this.heading) * distance;
-  }
-
-  bounceOfWalls(posX, posY, height) {
-    let newHeading = this.heading;
-
-    if (posX < Ball.RADIUS || posX > (1000 - Ball.RADIUS))
-      newHeading = MathHelper.rad540 - newHeading;
-
-    if (posY < Ball.RADIUS || posY > (height - Ball.RADIUS))
-      newHeading = MathHelper.rad360 - newHeading;
-
-    return newHeading;
+    if (this.position.y < this.size || this.position.y > (height - this.size))
+      this.heading = this.heading.mirrorVertical();
   }
 }
 

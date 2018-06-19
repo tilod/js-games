@@ -4,7 +4,18 @@ import Board from './world/board';
 
 const world = new World();
 world.spawn('board', Board);
-world.spawn('ball', Ball);
+world.spawn('blue-ball', Ball, {
+  size: 100,
+  position: [100, 100],
+  heading: [1, 1],
+  view: { backgroundColor: 'darkblue' }
+});
+world.spawn('red-ball', Ball, {
+  size: 100,
+  position: [900, 100],
+  heading: [-1, 2],
+  view: { backgroundColor: 'red' }
+});
 
 const loop = (timestamp) => {
   world.update(timestamp - lastRender);
