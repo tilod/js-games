@@ -86,15 +86,15 @@
 /************************************************************************/
 /******/ ({
 
-/***/ "./src/geometry/position.js":
-/*!**********************************!*\
-  !*** ./src/geometry/position.js ***!
-  \**********************************/
+/***/ "./src/geometry/point2d.js":
+/*!*********************************!*\
+  !*** ./src/geometry/point2d.js ***!
+  \*********************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
-eval("\n\nObject.defineProperty(exports, \"__esModule\", {\n  value: true\n});\nclass Position {\n  constructor(x, y) {\n    this.x = x;\n    this.y = y;\n  }\n}\n\nexports.default = Position;\n\n//# sourceURL=webpack:///./src/geometry/position.js?");
+eval("\n\nObject.defineProperty(exports, \"__esModule\", {\n  value: true\n});\nclass Point2D {\n  constructor(x, y) {\n    this.x = x;\n    this.y = y;\n  }\n\n  add(other) {\n    return new Point2D(this.x + other.x, this.y + other.y);\n  }\n\n  substract(other) {\n    return new Point2D(this.x - other.x, this.y - other.y);\n  }\n\n  multiply(scalar) {\n    return new Point2D(this.x * scalar, this.y * scalar);\n  }\n\n  divide(scalar) {\n    return new Point2D(this.x / scalar, this.y / scalar);\n  }\n\n  mirrorVertical() {\n    return new Point2D(this.x, -this.y);\n  }\n\n  mirrorHorizontal() {\n    return new Point2D(-this.x, this.y);\n  }\n\n  negate() {\n    return new Point2D(-this.x, -this.y);\n  }\n\n  length() {\n    return Math.sqrt(this.x * this.x + this.y * this.y);\n  }\n\n  normalize() {\n    return this.divide(this.length());\n  }\n\n  dot(other) {\n    return this.x * other.x + this.y * other.y;\n  }\n}\n\nexports.default = Point2D;\n\n//# sourceURL=webpack:///./src/geometry/point2d.js?");
 
 /***/ }),
 
@@ -106,19 +106,19 @@ eval("\n\nObject.defineProperty(exports, \"__esModule\", {\n  value: true\n});\n
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
-eval("\n\nvar _position = __webpack_require__(/*! ./geometry/position */ \"./src/geometry/position.js\");\n\nvar _position2 = _interopRequireDefault(_position);\n\nvar _world = __webpack_require__(/*! ./world */ \"./src/world/index.js\");\n\nvar _world2 = _interopRequireDefault(_world);\n\nvar _ball = __webpack_require__(/*! ./world/ball */ \"./src/world/ball.js\");\n\nvar _ball2 = _interopRequireDefault(_ball);\n\nvar _board = __webpack_require__(/*! ./world/board */ \"./src/world/board.js\");\n\nvar _board2 = _interopRequireDefault(_board);\n\nfunction _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }\n\nconst world = new _world2.default();\nworld.spawn('board', _board2.default);\nworld.spawn('ball1', _ball2.default, new _position2.default(_ball2.default.RADIUS, _ball2.default.RADIUS));\n\nconst loop = timestamp => {\n  world.update(timestamp - lastRender);\n\n  lastRender = timestamp;\n  window.requestAnimationFrame(loop);\n};\n\nlet lastRender = 0;\nwindow.requestAnimationFrame(loop);\n\n//# sourceURL=webpack:///./src/index.js?");
+eval("\n\nvar _world = __webpack_require__(/*! ./world */ \"./src/world/index.js\");\n\nvar _world2 = _interopRequireDefault(_world);\n\nvar _ball = __webpack_require__(/*! ./world/ball */ \"./src/world/ball.js\");\n\nvar _ball2 = _interopRequireDefault(_ball);\n\nvar _board = __webpack_require__(/*! ./world/board */ \"./src/world/board.js\");\n\nvar _board2 = _interopRequireDefault(_board);\n\nfunction _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }\n\nconst world = new _world2.default();\nworld.spawn('board', _board2.default);\nworld.spawn('blue-ball', _ball2.default, {\n  size: 100,\n  position: [100, 100],\n  heading: [1, 1],\n  view: { backgroundColor: 'darkblue' }\n});\nworld.spawn('red-ball', _ball2.default, {\n  size: 100,\n  position: [900, 100],\n  heading: [-1, 2],\n  view: { backgroundColor: 'red' }\n});\n\nconst loop = timestamp => {\n  world.update(timestamp - lastRender);\n\n  lastRender = timestamp;\n  window.requestAnimationFrame(loop);\n};\n\nlet lastRender = 0;\nwindow.requestAnimationFrame(loop);\n\n//# sourceURL=webpack:///./src/index.js?");
 
 /***/ }),
 
-/***/ "./src/math-helper.js":
-/*!****************************!*\
-  !*** ./src/math-helper.js ***!
-  \****************************/
+/***/ "./src/physics/index.js":
+/*!******************************!*\
+  !*** ./src/physics/index.js ***!
+  \******************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
-eval("\n\nObject.defineProperty(exports, \"__esModule\", {\n  value: true\n});\nconst rad360 = 2 * Math.PI;\nconst rad540 = 3 * Math.PI;\n\nexports.default = { rad360, rad540 };\n\n//# sourceURL=webpack:///./src/math-helper.js?");
+eval("\n\nObject.defineProperty(exports, \"__esModule\", {\n  value: true\n});\nclass Physics {\n  reflect(collisions) {\n    for (let collision of collisions) {\n      const item1 = collision[0];\n      const item2 = collision[1];\n      const contactNormal1 = item1.position.normalize(item1.position.substract(item2.position));\n      const contactNormal2 = contactNormal1.negate();\n\n      item1.heading = item1.heading.substract(contactNormal1.multiply(2).multiply(contactNormal1.dot(item1.heading)));\n      item2.heading = item2.heading.substract(contactNormal2.multiply(2).multiply(contactNormal2.dot(item2.heading)));\n    }\n  }\n\n  // private\n\n  doCollide(p1, s1, p2, s2) {\n    return (p2.x - p1.x) * (p2.x - p1.x) + (p2.y - p1.y) * (p2.y - p1.y) <= (s1 + s2) * (s1 + s2);\n  }\n}\n\nexports.default = Physics;\n\n//# sourceURL=webpack:///./src/physics/index.js?");
 
 /***/ }),
 
@@ -154,19 +154,7 @@ eval("\n\nObject.defineProperty(exports, \"__esModule\", {\n  value: true\n});\n
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
-eval("\n\nObject.defineProperty(exports, \"__esModule\", {\n  value: true\n});\nclass Sprite {\n  constructor({ backgroundColor, borderRadius }) {\n    this.element = document.createElement('div');\n\n    this.element.style.backgroundColor = backgroundColor;\n    this.element.style.borderRadius = borderRadius;\n\n    this.element.style.position = 'absolute';\n    this.element.style.top = '0';\n    this.element.style.left = '0';\n\n    document.body.appendChild(this.element);\n  }\n\n  draw(position, rotation, radius, scale, viewportHeight) {\n    const drawSize = radius * 2 * scale;\n    const drawX = (position.x - radius) * scale;\n    const drawY = viewportHeight - (position.y + radius) * scale;\n\n    this.updateElement(drawSize, drawX, drawY, rotation);\n  }\n\n  updateElement(drawSize, drawX, drawY, rotation) {\n    this.element.style.height = `${drawSize}px`;\n    this.element.style.width = `${drawSize}px`;\n    this.element.style.transform = `translate(${drawX}px, ${drawY}px) rotate(${rotation}deg)`;\n  }\n}\n\nexports.default = Sprite;\n\n//# sourceURL=webpack:///./src/view/sprite.js?");
-
-/***/ }),
-
-/***/ "./src/view/text-sprite.js":
-/*!*********************************!*\
-  !*** ./src/view/text-sprite.js ***!
-  \*********************************/
-/*! no static exports found */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-eval("\n\nObject.defineProperty(exports, \"__esModule\", {\n  value: true\n});\n\nvar _sprite = __webpack_require__(/*! ./sprite */ \"./src/view/sprite.js\");\n\nvar _sprite2 = _interopRequireDefault(_sprite);\n\nfunction _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }\n\nclass TextSprite extends _sprite2.default {\n  constructor({ backgroundColor, borderRadius, textColor, fontFamily, text }) {\n    super({ backgroundColor, borderRadius });\n\n    this.element.style.textAlign = 'center';\n    this.element.style.color = textColor, this.element.style.fontFamily = fontFamily;\n    this.element.innerHTML = text;\n  }\n\n  updateElement(drawSize, drawX, drawY, rotation) {\n    super.updateElement(drawSize, drawX, drawY, rotation);\n\n    this.element.style.lineHeight = `${drawSize}px`;\n    this.element.style.fontSize = `${drawSize * 0.8}px`;\n  }\n}\n\nexports.default = TextSprite;\n\n//# sourceURL=webpack:///./src/view/text-sprite.js?");
+eval("\n\nObject.defineProperty(exports, \"__esModule\", {\n  value: true\n});\nclass Sprite {\n  constructor({ backgroundColor, borderRadius }) {\n    this.element = document.createElement('div');\n\n    this.element.style.backgroundColor = backgroundColor;\n    this.element.style.borderRadius = borderRadius;\n\n    this.element.style.position = 'absolute';\n    this.element.style.top = '0';\n    this.element.style.left = '0';\n\n    document.body.appendChild(this.element);\n  }\n\n  draw(position, rotation, radius, scale, viewportHeight) {\n    const drawSize = radius * 2 * scale;\n    const drawX = (position.x - radius) * scale;\n    const drawY = viewportHeight - (position.y + radius) * scale;\n\n    this.updateElement(drawSize, drawX, drawY);\n  }\n\n  updateElement(drawSize, drawX, drawY) {\n    this.element.style.height = `${drawSize}px`;\n    this.element.style.width = `${drawSize}px`;\n    this.element.style.transform = `translate(${drawX}px, ${drawY}px) rotate(0deg)`;\n  }\n}\n\nexports.default = Sprite;\n\n//# sourceURL=webpack:///./src/view/sprite.js?");
 
 /***/ }),
 
@@ -178,7 +166,7 @@ eval("\n\nObject.defineProperty(exports, \"__esModule\", {\n  value: true\n});\n
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
-eval("\n\nObject.defineProperty(exports, \"__esModule\", {\n  value: true\n});\n\nvar _mathHelper = __webpack_require__(/*! ../math-helper */ \"./src/math-helper.js\");\n\nvar _mathHelper2 = _interopRequireDefault(_mathHelper);\n\nvar _textSprite = __webpack_require__(/*! ../view/text-sprite */ \"./src/view/text-sprite.js\");\n\nvar _textSprite2 = _interopRequireDefault(_textSprite);\n\nfunction _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }\n\nclass Ball {\n\n  constructor(initialPosition) {\n    this.rotation = 0;\n    this.position = initialPosition;\n    this.heading = Math.PI / 4; // 45°\n\n    this.view = new _textSprite2.default({\n      backgroundColor: 'darkblue',\n      borderRadius: '50%',\n      textColor: 'white',\n      fontFamily: 'Helvetica Neue',\n      text: '&uarr;'\n    });\n  }\n\n  update(step, height) {\n    this.catchResize(height);\n    this.rotate(step);\n    this.translate(step, height);\n  }\n\n  draw(scale, viewportHeight) {\n    this.view.draw(this.position, this.rotation, Ball.RADIUS, scale, viewportHeight);\n  }\n\n  // private\n\n  catchResize(height) {\n    if (this.position.y > height - Ball.RADIUS) this.position.y = height - Ball.RADIUS;\n  }\n\n  rotate(step) {\n    const angle = step / (1000 / Ball.SPEED);\n\n    this.rotation += angle;\n    if (this.rotation >= 360) this.rotation -= 360;\n  }\n\n  translate(step, height) {\n    const distance = step / (1000 / Ball.SPEED);\n\n    const projectedPosX = this.calculatePosX(distance);\n    const projectedPosY = this.calculatePosY(distance);\n    const newHeading = this.bounceOfWalls(projectedPosX, projectedPosY, height);\n\n    if (newHeading === this.heading) {\n      this.position.x = projectedPosX;\n      this.position.y = projectedPosY;\n    } else {\n      this.heading = newHeading;\n      this.position.x = this.calculatePosX(distance);\n      this.position.y = this.calculatePosY(distance);\n    }\n  }\n\n  calculatePosX(distance) {\n    return this.position.x + Math.cos(this.heading) * distance;\n  }\n\n  calculatePosY(distance) {\n    return this.position.y + Math.sin(this.heading) * distance;\n  }\n\n  bounceOfWalls(posX, posY, height) {\n    let newHeading = this.heading;\n\n    if (posX < Ball.RADIUS || posX > 1000 - Ball.RADIUS) newHeading = _mathHelper2.default.rad540 - newHeading;\n\n    if (posY < Ball.RADIUS || posY > height - Ball.RADIUS) newHeading = _mathHelper2.default.rad360 - newHeading;\n\n    return newHeading;\n  }\n}\n\nBall.RADIUS = 100;\nBall.SPEED = 200;\nexports.default = Ball;\n\n//# sourceURL=webpack:///./src/world/ball.js?");
+eval("\n\nObject.defineProperty(exports, \"__esModule\", {\n  value: true\n});\n\nvar _point2d = __webpack_require__(/*! ../geometry/point2d */ \"./src/geometry/point2d.js\");\n\nvar _point2d2 = _interopRequireDefault(_point2d);\n\nvar _sprite = __webpack_require__(/*! ../view/sprite */ \"./src/view/sprite.js\");\n\nvar _sprite2 = _interopRequireDefault(_sprite);\n\nfunction _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }\n\nclass Ball {\n  constructor({\n    size = 100,\n    position = [Ball.RADIUS, Ball.RADIUS],\n    heading = [1, 1],\n    view\n  }) {\n    this.size = size;\n    this.position = new _point2d2.default(position[0], position[1]);\n    this.heading = new _point2d2.default(heading[0], heading[1]);\n\n    this.view = new _sprite2.default(Object.assign({\n      backgroundColor: 'red',\n      borderRadius: '50%'\n    }, view));\n\n    this.colliding = false;\n  }\n\n  update(step, height) {\n    this.catchResize(height);\n    this.translate(step);\n    this.bounceOfWalls(height);\n  }\n\n  draw(scale, viewportHeight) {\n    this.view.draw(this.position, this.heading, this.size, scale, viewportHeight);\n  }\n\n  // private\n\n  catchResize(height) {\n    if (this.position.y > height - this.size) this.position.y = height - this.size;\n  }\n\n  translate(step) {\n    this.position = this.position.add(this.heading.multiply(step / 10));\n  }\n\n  bounceOfWalls(height) {\n    if (this.position.x < this.size || this.position.x > 1000 - this.size) this.heading = this.heading.mirrorHorizontal();\n\n    if (this.position.y < this.size || this.position.y > height - this.size) this.heading = this.heading.mirrorVertical();\n  }\n}\n\nexports.default = Ball;\n\n//# sourceURL=webpack:///./src/world/ball.js?");
 
 /***/ }),
 
@@ -214,7 +202,7 @@ eval("\n\nObject.defineProperty(exports, \"__esModule\", {\n  value: true\n});\n
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
-eval("\n\nObject.defineProperty(exports, \"__esModule\", {\n  value: true\n});\n\nvar _browserWindow = __webpack_require__(/*! ./browser-window */ \"./src/world/browser-window.js\");\n\nvar _browserWindow2 = _interopRequireDefault(_browserWindow);\n\nvar _view = __webpack_require__(/*! ../view */ \"./src/view/index.js\");\n\nvar _view2 = _interopRequireDefault(_view);\n\nfunction _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }\n\nclass World {\n  constructor() {\n    this.items = new Map();\n\n    this.browserWindow = new _browserWindow2.default();\n    this.view = new _view2.default();\n  }\n\n  spawn(key, klass, ...options) {\n    this.items.set(key, new klass(...options));\n  }\n\n  update(step) {\n    this.items.forEach(item => item.update(step, this.browserWindow.normalizedHeight()));\n\n    this.view.draw(this.items.values(), this.browserWindow.scale(), this.browserWindow.viewportHeight());\n  }\n}\n\nexports.default = World;\n\n//# sourceURL=webpack:///./src/world/index.js?");
+eval("\n\nObject.defineProperty(exports, \"__esModule\", {\n  value: true\n});\n\nvar _browserWindow = __webpack_require__(/*! ./browser-window */ \"./src/world/browser-window.js\");\n\nvar _browserWindow2 = _interopRequireDefault(_browserWindow);\n\nvar _physics = __webpack_require__(/*! ../physics */ \"./src/physics/index.js\");\n\nvar _physics2 = _interopRequireDefault(_physics);\n\nvar _view = __webpack_require__(/*! ../view */ \"./src/view/index.js\");\n\nvar _view2 = _interopRequireDefault(_view);\n\nfunction _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }\n\nclass World {\n  constructor() {\n    this.items = new Map();\n\n    this.physics = new _physics2.default();\n    this.browserWindow = new _browserWindow2.default();\n    this.view = new _view2.default();\n  }\n\n  spawn(key, klass, options = {}) {\n    this.items.set(key, new klass(options));\n  }\n\n  update(step) {\n    this.items.forEach(item => item.update(step, this.browserWindow.normalizedHeight()));\n\n    // REFACTOR to Physics\n    // ---- >8 ----\n    const collisions = [];\n    const blue = this.items.get('blue-ball');\n    const red = this.items.get('red-ball');\n    if (this.physics.doCollide(blue.position, blue.size, red.position, red.size)) {\n      if (!blue.colliding && !red.colliding) {\n        blue.colliding = true;\n        red.colliding = true;\n        collisions.push([blue, red]);\n      }\n    } else {\n      blue.colliding = false;\n      red.colliding = false;\n    }\n    // ---- 8< ----\n\n    this.physics.reflect(collisions);\n\n    this.view.draw(this.items.values(), this.browserWindow.scale(), this.browserWindow.viewportHeight());\n  }\n}\n\nexports.default = World;\n\n//# sourceURL=webpack:///./src/world/index.js?");
 
 /***/ })
 
