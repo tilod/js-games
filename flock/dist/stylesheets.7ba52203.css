@@ -1,0 +1,12 @@
+body {
+  background-color: lightblue;
+}
+
+.bird {
+  background-color: red;
+  color: white;
+  text-align: center;
+  vertical-align: middle;
+  font-size: 32px;
+  font-family: Helvetica;
+}
