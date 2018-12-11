@@ -1,19 +1,20 @@
+import BrowserWindow from './browser-window';
+import World from './world';
+
 import { Item } from './interfaces';
 
-import BrowserWindow from './browser-window';
-
 export default class Engine {
-  private items: Array<Item>;
   private browserWindow: BrowserWindow;
+  private world: World;
 
   constructor() {
-    this.items = [];
-
     this.browserWindow = new BrowserWindow();
+    this.world = new World();
   }
 
-  spawn(item: Item): Engine {
-    this.items.push(item);
+  spawn(item: Item, tags: Array<String> = []): Engine {
+    item.world = this.world;
+    this.world.addItem(item, tags);
 
     return this;
   }
@@ -37,7 +38,7 @@ export default class Engine {
   // private --------
 
   private update(step: number): Engine {
-    for (const item of this.items) {
+    for (const item of this.world.getItems()) {
       item.update(step, this.browserWindow.viewportRatio);
     }
 
@@ -45,7 +46,7 @@ export default class Engine {
   };
 
   private render(): Engine {
-    for (const item of this.items) {
+    for (const item of this.world.getItems()) {
       item.render(this.browserWindow)
     };
 

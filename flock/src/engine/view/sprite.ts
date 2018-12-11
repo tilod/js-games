@@ -26,20 +26,19 @@ export default class Sprite {
     position: Point2D,
     heading: Point2D = null,
   ) {
-    const width: number = this.dimensions.x * browserWindow.viewportWidth;
-    const height: number = this.dimensions.y * browserWindow.viewportWidth;
     const screenX: number =
       (position.x - this.dimensions.x / 2) * browserWindow.viewportWidth;
     const screenY: number =
       browserWindow.viewportHeight -
         ((position.y + this.dimensions.y / 2) * browserWindow.viewportWidth);
-      const rotation: number = heading ? heading.orientationDeg() : 0;
+    const rotation: number = heading ? -heading.orientationDeg() : 0;
+    const scale: number =
+      (this.dimensions.x * browserWindow.viewportWidth) /
+        this.htmlElement.clientWidth;
 
-    this.htmlElement.style.width =`${width}px`;
-    this.htmlElement.style.height = `${height}px`;
     this.htmlElement.style.transform =
-      `translate(${screenX}px, ${screenY}px) rotate(${rotation}deg)`;
-
-    this.htmlElement.innerText = rotation.toString();
+      `translate(${screenX}px, ${screenY}px)
+       rotate(${rotation}deg)
+       scale(${scale}, ${scale})`;
   }
 }

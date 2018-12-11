@@ -7,6 +7,16 @@ export default class Point2D {
     this.y = y;
   }
 
+  static center(points: Array<Point2D>): Point2D {
+    if (points.length === 1) {
+      return points[0];
+    } else {
+      return points
+        .reduce((centerPoint, point) => centerPoint.add(point))
+        .divide(points.length);
+    }
+  }
+
   clone(): Point2D {
     return new Point2D(this.x, this.y);
   }
@@ -39,6 +49,20 @@ export default class Point2D {
     return new Point2D(-this.x, -this.y);
   }
 
+  rotateDeg(angle: number): Point2D {
+    return this.rotateRad(angle * Math.PI / 180);
+  }
+
+  rotateRad(angle: number): Point2D {
+    const sin: number = Math.sin(angle);
+    const cos: number = Math.cos(angle);
+
+    return new Point2D(
+      cos * this.x - sin * this.y,
+      sin * this.x + cos * this.y,
+    );
+  }
+
   length(): number {
     return Math.sqrt(this.x * this.x + this.y * this.y);
   }
@@ -52,11 +76,19 @@ export default class Point2D {
   }
 
   orientationDeg(): number {
-    return (this.x < 0 ? 270 : 90) - this.angleRad() * 180/Math.PI;
+    return (this.y < 0 ? 180 : 0) - this.angleRad() * 180/Math.PI;
   }
 
   orientationRad(): number {
-    return (this.x < 0 ? 3/2*Math.PI : 1/2*Math.PI) - this.angleRad();
+    return (this.y < 0 ? Math.PI : 0) - this.angleRad();
+  }
+
+  quadDistance(other: Point2D): number {
+    return Math.pow(other.x - this.x, 2) + Math.pow(other.y - this.y, 2)
+  }
+
+  distance(other: Point2D): number {
+    return Math.sqrt(this.quadDistance(other));
   }
 
   // private --------

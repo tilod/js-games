@@ -152,6 +152,47 @@ function () {
 }();
 
 exports["default"] = BrowserWindow;
+},{}],"src/engine/world.ts":[function(require,module,exports) {
+"use strict";
+
+exports.__esModule = true;
+
+var World =
+/** @class */
+function () {
+  function World() {
+    this.items = new Map();
+    this.items.set(World.ALL_ITEMS, []);
+  }
+
+  World.prototype.addItem = function (item, tags) {
+    this.items.get(World.ALL_ITEMS).push(item);
+
+    for (var _i = 0, tags_1 = tags; _i < tags_1.length; _i++) {
+      var tag = tags_1[_i];
+      var tagList = this.items.get(tag);
+
+      if (tagList) {
+        tagList.push(item);
+      } else {
+        this.items.set(tag, [item]);
+      }
+    }
+  };
+
+  World.prototype.getItems = function (tag) {
+    if (tag === void 0) {
+      tag = World.ALL_ITEMS;
+    }
+
+    return this.items.get(tag);
+  };
+
+  World.ALL_ITEMS = '__all__';
+  return World;
+}();
+
+exports["default"] = World;
 },{}],"src/engine/index.ts":[function(require,module,exports) {
 "use strict";
 
@@ -165,16 +206,23 @@ exports.__esModule = true;
 
 var browser_window_1 = __importDefault(require("./browser-window"));
 
+var world_1 = __importDefault(require("./world"));
+
 var Engine =
 /** @class */
 function () {
   function Engine() {
-    this.items = [];
     this.browserWindow = new browser_window_1["default"]();
+    this.world = new world_1["default"]();
   }
 
-  Engine.prototype.spawn = function (item) {
-    this.items.push(item);
+  Engine.prototype.spawn = function (item, tags) {
+    if (tags === void 0) {
+      tags = [];
+    }
+
+    item.world = this.world;
+    this.world.addItem(item, tags);
     return this;
   };
 
@@ -196,7 +244,7 @@ function () {
 
 
   Engine.prototype.update = function (step) {
-    for (var _i = 0, _a = this.items; _i < _a.length; _i++) {
+    for (var _i = 0, _a = this.world.getItems(); _i < _a.length; _i++) {
       var item = _a[_i];
       item.update(step, this.browserWindow.viewportRatio);
     }
@@ -207,7 +255,7 @@ function () {
   ;
 
   Engine.prototype.render = function () {
-    for (var _i = 0, _a = this.items; _i < _a.length; _i++) {
+    for (var _i = 0, _a = this.world.getItems(); _i < _a.length; _i++) {
       var item = _a[_i];
       item.render(this.browserWindow);
     }
@@ -220,7 +268,7 @@ function () {
 }();
 
 exports["default"] = Engine;
-},{"./browser-window":"src/engine/browser-window.ts"}],"src/engine/geometry/point2d.ts":[function(require,module,exports) {
+},{"./browser-window":"src/engine/browser-window.ts","./world":"src/engine/world.ts"}],"src/engine/geometry/point2d.ts":[function(require,module,exports) {
 "use strict";
 
 exports.__esModule = true;
@@ -232,6 +280,16 @@ function () {
     this.x = x;
     this.y = y;
   }
+
+  Point2D.center = function (points) {
+    if (points.length === 1) {
+      return points[0];
+    } else {
+      return points.reduce(function (centerPoint, point) {
+        return centerPoint.add(point);
+      }).divide(points.length);
+    }
+  };
 
   Point2D.prototype.clone = function () {
     return new Point2D(this.x, this.y);
@@ -265,6 +323,16 @@ function () {
     return new Point2D(-this.x, -this.y);
   };
 
+  Point2D.prototype.rotateDeg = function (angle) {
+    return this.rotateRad(angle * Math.PI / 180);
+  };
+
+  Point2D.prototype.rotateRad = function (angle) {
+    var sin = Math.sin(angle);
+    var cos = Math.cos(angle);
+    return new Point2D(cos * this.x - sin * this.y, sin * this.x + cos * this.y);
+  };
+
   Point2D.prototype.length = function () {
     return Math.sqrt(this.x * this.x + this.y * this.y);
   };
@@ -278,11 +346,19 @@ function () {
   };
 
   Point2D.prototype.orientationDeg = function () {
-    return (this.x < 0 ? 270 : 90) - this.angleRad() * 180 / Math.PI;
+    return (this.y < 0 ? 180 : 0) - this.angleRad() * 180 / Math.PI;
   };
 
   Point2D.prototype.orientationRad = function () {
-    return (this.x < 0 ? 3 / 2 * Math.PI : 1 / 2 * Math.PI) - this.angleRad();
+    return (this.y < 0 ? Math.PI : 0) - this.angleRad();
+  };
+
+  Point2D.prototype.quadDistance = function (other) {
+    return Math.pow(other.x - this.x, 2) + Math.pow(other.y - this.y, 2);
+  };
+
+  Point2D.prototype.distance = function (other) {
+    return Math.sqrt(this.quadDistance(other));
   }; // private --------
 
 
@@ -294,7 +370,57 @@ function () {
 }();
 
 exports["default"] = Point2D;
-},{}],"src/engine/view/sprite.ts":[function(require,module,exports) {
+},{}],"src/engine/physics/peg.ts":[function(require,module,exports) {
+"use strict";
+
+var __importDefault = this && this.__importDefault || function (mod) {
+  return mod && mod.__esModule ? mod : {
+    "default": mod
+  };
+};
+
+exports.__esModule = true;
+
+var point2d_1 = __importDefault(require("../geometry/point2d"));
+
+var Peg =
+/** @class */
+function () {
+  function Peg(position, heading) {
+    if (position === void 0) {
+      position = new point2d_1["default"](0, 0);
+    }
+
+    if (heading === void 0) {
+      heading = new point2d_1["default"](0, 0);
+    }
+
+    this.position = position;
+    this.heading = heading;
+  }
+
+  Peg.prototype.executeMovement = function (step) {
+    this.position = this.position.add(new point2d_1["default"](step * this.heading.x, step * this.heading.y));
+    return this;
+  };
+
+  Peg.prototype.bounceOfWalls = function (boardRatio) {
+    if (this.position.x < 0 && this.heading.x < 0 || this.position.x > 1 && this.heading.x > 0) {
+      this.heading = this.heading.mirrorVertical();
+    }
+
+    if (this.position.y < 0 && this.heading.y < 0 || this.position.y > boardRatio && this.heading.y > 0) {
+      this.heading = this.heading.mirrorHorizontal();
+    }
+
+    return this;
+  };
+
+  return Peg;
+}();
+
+exports["default"] = Peg;
+},{"../geometry/point2d":"src/engine/geometry/point2d.ts"}],"src/engine/view/sprite.ts":[function(require,module,exports) {
 "use strict";
 
 exports.__esModule = true;
@@ -317,15 +443,11 @@ function () {
       heading = null;
     }
 
-    var width = this.dimensions.x * browserWindow.viewportWidth;
-    var height = this.dimensions.y * browserWindow.viewportWidth;
     var screenX = (position.x - this.dimensions.x / 2) * browserWindow.viewportWidth;
     var screenY = browserWindow.viewportHeight - (position.y + this.dimensions.y / 2) * browserWindow.viewportWidth;
-    var rotation = heading ? heading.orientationDeg() : 0;
-    this.htmlElement.style.width = width + "px";
-    this.htmlElement.style.height = height + "px";
-    this.htmlElement.style.transform = "translate(" + screenX + "px, " + screenY + "px) rotate(" + rotation + "deg)";
-    this.htmlElement.innerText = rotation.toString();
+    var rotation = heading ? -heading.orientationDeg() : 0;
+    var scale = this.dimensions.x * browserWindow.viewportWidth / this.htmlElement.clientWidth;
+    this.htmlElement.style.transform = "translate(" + screenX + "px, " + screenY + "px)\n       rotate(" + rotation + "deg)\n       scale(" + scale + ", " + scale + ")";
   };
 
   return Sprite;
@@ -345,38 +467,99 @@ exports.__esModule = true;
 
 var point2d_1 = __importDefault(require("../engine/geometry/point2d"));
 
+var peg_1 = __importDefault(require("../engine/physics/peg"));
+
 var sprite_1 = __importDefault(require("../engine/view/sprite"));
 
 var Bird =
 /** @class */
 function () {
-  function Bird() {
-    this.position = new point2d_1["default"](0, 0);
-    this.heading = new point2d_1["default"](0.0002, 0.0002);
+  function Bird(turnRate) {
+    this.turnRate = turnRate;
+    this.peg = new peg_1["default"](new point2d_1["default"](0, 0), new point2d_1["default"](0.0002, 0.0002));
     this.sprite = new sprite_1["default"](document.documentElement, 'bird', new point2d_1["default"](0.05, 0.05));
   }
 
   Bird.prototype.update = function (step, boardRatio) {
-    this.position = this.position.add(new point2d_1["default"](step * this.heading.x, step * this.heading.y));
-
-    if (this.position.x < 0 || this.position.x > 1) {
-      this.heading = this.heading.mirrorVertical();
-    }
-
-    if (this.position.y < 0 || this.position.y > boardRatio) {
-      this.heading = this.heading.mirrorHorizontal();
-    }
+    this.peg.heading = this.peg.heading.rotateDeg(this.turnRate);
+    this.peg.executeMovement(step).bounceOfWalls(boardRatio);
   };
 
   Bird.prototype.render = function (browserWindow) {
-    this.sprite.render(browserWindow, this.position, this.heading);
+    this.sprite.render(browserWindow, this.peg.position, this.peg.heading);
   };
 
   return Bird;
 }();
 
 exports["default"] = Bird;
-},{"../engine/geometry/point2d":"src/engine/geometry/point2d.ts","../engine/view/sprite":"src/engine/view/sprite.ts"}],"src/index.ts":[function(require,module,exports) {
+},{"../engine/geometry/point2d":"src/engine/geometry/point2d.ts","../engine/physics/peg":"src/engine/physics/peg.ts","../engine/view/sprite":"src/engine/view/sprite.ts"}],"src/flock/hunter.ts":[function(require,module,exports) {
+"use strict";
+
+var __importDefault = this && this.__importDefault || function (mod) {
+  return mod && mod.__esModule ? mod : {
+    "default": mod
+  };
+};
+
+exports.__esModule = true;
+
+var point2d_1 = __importDefault(require("../engine/geometry/point2d"));
+
+var peg_1 = __importDefault(require("../engine/physics/peg"));
+
+var sprite_1 = __importDefault(require("../engine/view/sprite"));
+
+var Hunter =
+/** @class */
+function () {
+  function Hunter() {
+    this.peg = new peg_1["default"](new point2d_1["default"](0, 0.5), new point2d_1["default"](0.0001, 0.0002));
+    this.sprite = new sprite_1["default"](document.documentElement, 'hunter', new point2d_1["default"](0.1, 0.1));
+  }
+
+  Hunter.prototype.update = function (step, boardRatio) {
+    // follow the nearest bird --------
+    var birds = this.world.getItems('bird');
+    var nearestDistance = 9999;
+    var nearestBird = null;
+
+    for (var _i = 0, birds_1 = birds; _i < birds_1.length; _i++) {
+      var bird = birds_1[_i];
+      var distance = this.peg.position.quadDistance(bird.peg.position);
+
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        nearestBird = bird;
+      }
+    }
+
+    var directionToBird = nearestBird.peg.position.substract(this.peg.position);
+    var directionOrientation = directionToBird.orientationDeg();
+    var hunterOrientation = this.peg.heading.orientationDeg();
+    var orientationDiff = directionOrientation - hunterOrientation;
+
+    if (orientationDiff > 15) {
+      this.peg.heading = this.peg.heading.rotateDeg(15);
+    } else if (orientationDiff < -15) {
+      this.peg.heading = this.peg.heading.rotateDeg(-15);
+    } else {
+      this.peg.heading = this.peg.heading.rotateDeg(orientationDiff);
+    } // --------
+
+
+    this.peg.executeMovement(step).bounceOfWalls(boardRatio);
+  };
+
+  Hunter.prototype.render = function (browserWindow) {
+    this.sprite.render(browserWindow, this.peg.position, this.peg.heading);
+  };
+
+  return Hunter;
+}();
+
+exports["default"] = Hunter;
+},{"../engine/geometry/point2d":"src/engine/geometry/point2d.ts","../engine/physics/peg":"src/engine/physics/peg.ts","../engine/view/sprite":"src/engine/view/sprite.ts"}],"src/index.ts":[function(require,module,exports) {
 "use strict";
 
 var __importDefault = this && this.__importDefault || function (mod) {
@@ -391,9 +574,11 @@ var engine_1 = __importDefault(require("./engine"));
 
 var bird_1 = __importDefault(require("./flock/bird"));
 
+var hunter_1 = __importDefault(require("./flock/hunter"));
+
 var engine = new engine_1["default"]();
-engine.spawn(new bird_1["default"]()).start();
-},{"./engine":"src/engine/index.ts","./flock/bird":"src/flock/bird.ts"}],"node_modules/parcel/src/builtins/hmr-runtime.js":[function(require,module,exports) {
+engine.spawn(new bird_1["default"](0.75), ['bird']).spawn(new bird_1["default"](-0.5), ['bird']).spawn(new bird_1["default"](0.25), ['bird']).spawn(new hunter_1["default"]()).start();
+},{"./engine":"src/engine/index.ts","./flock/bird":"src/flock/bird.ts","./flock/hunter":"src/flock/hunter.ts"}],"node_modules/parcel/src/builtins/hmr-runtime.js":[function(require,module,exports) {
 var global = arguments[3];
 var OVERLAY_ID = '__parcel__error__overlay__';
 var OldModule = module.bundle.Module;
@@ -420,7 +605,7 @@ var parent = module.bundle.parent;
 if ((!parent || !parent.isParcelRequire) && typeof WebSocket !== 'undefined') {
   var hostname = "" || location.hostname;
   var protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-  var ws = new WebSocket(protocol + '://' + hostname + ':' + "51610" + '/');
+  var ws = new WebSocket(protocol + '://' + hostname + ':' + "51626" + '/');
 
   ws.onmessage = function (event) {
     var data = JSON.parse(event.data);
