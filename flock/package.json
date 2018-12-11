@@ -4,7 +4,8 @@
   "description": "",
   "main": "dist/index.js",
   "scripts": {
-    "dev-server": "parcel index.html --public-url './'",
+    "dev-server": "parcel index.html --out-dir local",
+    "build": "parcel build index.html --public-url './'",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
