@@ -53,6 +53,13 @@ export default class Point2D {
     return this.rotateRad(angle * Math.PI / 180);
   }
 
+  rotateDegMax(angle: number, maxTurnRate: number): Point2D {
+    if (angle > maxTurnRate) return this.rotateDeg(maxTurnRate);
+    if (angle < -maxTurnRate) return this.rotateDeg(-maxTurnRate);
+
+    return this.rotateDeg(angle);
+  }
+
   rotateRad(angle: number): Point2D {
     const sin: number = Math.sin(angle);
     const cos: number = Math.cos(angle);
@@ -63,12 +70,26 @@ export default class Point2D {
     );
   }
 
+  rotateRadMax(angle: number, maxTurnRate: number): Point2D {
+    if (angle > maxTurnRate) return this.rotateRad(maxTurnRate);
+    if (angle < -maxTurnRate) return this.rotateRad(-maxTurnRate);
+
+    return this.rotateRad(angle);
+  }
+
+  rotateTowards(other: Point2D, maxTurnRate: number): Point2D {
+    return this.rotateDegMax(
+      other.orientationDeg() - this.orientationDeg(),
+      maxTurnRate,
+    );
+  }
+
   length(): number {
     return Math.sqrt(this.x * this.x + this.y * this.y);
   }
 
-  normalize(): Point2D {
-    return this.divide(this.length());
+  normalize(length: number = 1): Point2D {
+    return this.divide(this.length() / length);
   }
 
   dot(other: Point2D): number {

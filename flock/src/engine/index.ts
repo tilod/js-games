@@ -12,6 +12,7 @@ export default class Engine {
     this.world = new World();
   }
 
+
   spawn(item: Item, tags: Array<String> = []): Engine {
     item.world = this.world;
     this.world.addItem(item, tags);
@@ -23,8 +24,11 @@ export default class Engine {
     const loop = (timestamp: number): void => {
       this.browserWindow.update();
 
+      const step = timestamp - lastRender;
+
       this
-        .update(timestamp - lastRender)
+        .plan(step)
+        .move(step)
         .render();
 
       lastRender = timestamp;
@@ -35,11 +39,18 @@ export default class Engine {
     window.requestAnimationFrame(loop);
   }
 
-  // private --------
 
-  private update(step: number): Engine {
+  private plan(step: number): Engine {
     for (const item of this.world.getItems()) {
-      item.update(step, this.browserWindow.viewportRatio);
+      item.plan(step);
+    }
+
+    return this;
+  };
+
+  private move(step: number): Engine {
+    for (const item of this.world.getItems()) {
+      item.move(step, this.browserWindow.viewportRatio);
     }
 
     return this;

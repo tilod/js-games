@@ -1,13 +1,16 @@
 import Point2D from '../geometry/point2d';
 
 export default class Peg {
+  public readonly id: String;
   public position: Point2D;
   public heading: Point2D;
 
   constructor(
+    id: String,
     position: Point2D = new Point2D(0, 0),
     heading: Point2D = new Point2D(0, 0),
   ) {
+    this.id = id;
     this.position = position;
     this.heading = heading;
   }

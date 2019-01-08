@@ -232,7 +232,9 @@ function () {
     var loop = function loop(timestamp) {
       _this.browserWindow.update();
 
-      _this.update(timestamp - lastRender).render();
+      var step = timestamp - lastRender;
+
+      _this.plan(step).move(step).render();
 
       lastRender = timestamp;
       window.requestAnimationFrame(loop);
@@ -240,13 +242,23 @@ function () {
 
     var lastRender = 0;
     window.requestAnimationFrame(loop);
-  }; // private --------
+  };
 
-
-  Engine.prototype.update = function (step) {
+  Engine.prototype.plan = function (step) {
     for (var _i = 0, _a = this.world.getItems(); _i < _a.length; _i++) {
       var item = _a[_i];
-      item.update(step, this.browserWindow.viewportRatio);
+      item.plan(step);
+    }
+
+    return this;
+  };
+
+  ;
+
+  Engine.prototype.move = function (step) {
+    for (var _i = 0, _a = this.world.getItems(); _i < _a.length; _i++) {
+      var item = _a[_i];
+      item.move(step, this.browserWindow.viewportRatio);
     }
 
     return this;
@@ -327,18 +339,38 @@ function () {
     return this.rotateRad(angle * Math.PI / 180);
   };
 
+  Point2D.prototype.rotateDegMax = function (angle, maxTurnRate) {
+    if (angle > maxTurnRate) return this.rotateDeg(maxTurnRate);
+    if (angle < -maxTurnRate) return this.rotateDeg(-maxTurnRate);
+    return this.rotateDeg(angle);
+  };
+
   Point2D.prototype.rotateRad = function (angle) {
     var sin = Math.sin(angle);
     var cos = Math.cos(angle);
     return new Point2D(cos * this.x - sin * this.y, sin * this.x + cos * this.y);
   };
 
+  Point2D.prototype.rotateRadMax = function (angle, maxTurnRate) {
+    if (angle > maxTurnRate) return this.rotateRad(maxTurnRate);
+    if (angle < -maxTurnRate) return this.rotateRad(-maxTurnRate);
+    return this.rotateRad(angle);
+  };
+
+  Point2D.prototype.rotateTowards = function (other, maxTurnRate) {
+    return this.rotateDegMax(other.orientationDeg() - this.orientationDeg(), maxTurnRate);
+  };
+
   Point2D.prototype.length = function () {
     return Math.sqrt(this.x * this.x + this.y * this.y);
   };
 
-  Point2D.prototype.normalize = function () {
-    return this.divide(this.length());
+  Point2D.prototype.normalize = function (length) {
+    if (length === void 0) {
+      length = 1;
+    }
+
+    return this.divide(this.length() / length);
   };
 
   Point2D.prototype.dot = function (other) {
@@ -386,7 +418,7 @@ var point2d_1 = __importDefault(require("../geometry/point2d"));
 var Peg =
 /** @class */
 function () {
-  function Peg(position, heading) {
+  function Peg(id, position, heading) {
     if (position === void 0) {
       position = new point2d_1["default"](0, 0);
     }
@@ -395,6 +427,7 @@ function () {
       heading = new point2d_1["default"](0, 0);
     }
 
+    this.id = id;
     this.position = position;
     this.heading = heading;
   }
@@ -474,14 +507,43 @@ var sprite_1 = __importDefault(require("../engine/view/sprite"));
 var Bird =
 /** @class */
 function () {
-  function Bird(turnRate) {
-    this.turnRate = turnRate;
-    this.peg = new peg_1["default"](new point2d_1["default"](0, 0), new point2d_1["default"](0.0002, 0.0002));
-    this.sprite = new sprite_1["default"](document.documentElement, 'bird', new point2d_1["default"](0.05, 0.05));
+  function Bird(id) {
+    this.id = id;
+    this.peg = new peg_1["default"](id + '--peg', new point2d_1["default"](Math.random(), Math.random()), new point2d_1["default"](Math.random(), Math.random()).normalize(0.0002));
+    this.sprite = new sprite_1["default"](document.documentElement, 'bird', new point2d_1["default"](0.005, 0.005));
   }
 
-  Bird.prototype.update = function (step, boardRatio) {
-    this.peg.heading = this.peg.heading.rotateDeg(this.turnRate);
+  Bird.prototype.plan = function (step) {
+    var cohesionNeighborCount = 1;
+    var cohesionPosition = this.peg.position;
+    var alignmentNeighborCount = 1;
+    var alignmentHeading = this.peg.heading;
+    var separationNeighborCount = 0;
+    var separationPosition = new point2d_1["default"](0, 0);
+
+    for (var _i = 0, _a = this.world.getItems('bird'); _i < _a.length; _i++) {
+      var item = _a[_i];
+      if (item === this) continue;
+      var quadDistance = this.peg.position.quadDistance(item.peg.position);
+      if (quadDistance > 0.04) continue;
+      ++cohesionNeighborCount;
+      cohesionPosition = cohesionPosition.add(item.peg.position);
+      if (quadDistance > 0.01) continue;
+      ++alignmentNeighborCount;
+      alignmentHeading = alignmentHeading.add(item.peg.heading);
+      if (quadDistance > 0.00025) continue;
+      ++separationNeighborCount;
+      separationPosition = separationPosition.add(item.peg.position.substract(this.peg.position));
+    }
+
+    var cohesionDirection = cohesionNeighborCount > 1 ? cohesionPosition.divide(cohesionNeighborCount).substract(this.peg.position).normalize(1) : this.peg.heading.normalize(1);
+    var alignmentDirection = alignmentHeading.divide(alignmentNeighborCount).normalize(4);
+    var separationDirection = separationNeighborCount > 0 ? separationPosition.divide(separationNeighborCount).negate().normalize(2) : this.peg.heading.normalize(2);
+    this.movementWish = cohesionDirection.add(alignmentDirection).add(separationDirection).normalize(0.0002);
+  };
+
+  Bird.prototype.move = function (step, boardRatio) {
+    this.peg.heading = this.movementWish;
     this.peg.executeMovement(step).bounceOfWalls(boardRatio);
   };
 
@@ -493,7 +555,38 @@ function () {
 }();
 
 exports["default"] = Bird;
-},{"../engine/geometry/point2d":"src/engine/geometry/point2d.ts","../engine/physics/peg":"src/engine/physics/peg.ts","../engine/view/sprite":"src/engine/view/sprite.ts"}],"src/flock/hunter.ts":[function(require,module,exports) {
+},{"../engine/geometry/point2d":"src/engine/geometry/point2d.ts","../engine/physics/peg":"src/engine/physics/peg.ts","../engine/view/sprite":"src/engine/view/sprite.ts"}],"src/engine/physics/distance_map.ts":[function(require,module,exports) {
+"use strict";
+
+exports.__esModule = true;
+
+var DistanceMap =
+/** @class */
+function () {
+  function DistanceMap() {
+    this.distance = new Map();
+  }
+
+  DistanceMap.prototype.distanceBetween = function (peg1, peg2) {
+    if (!this.distance.get(peg1.id)) this.distance.set(peg1.id, new Map());
+    var savedDistance = this.distance.get(peg1.id).get(peg2.id);
+
+    if (savedDistance) {
+      return savedDistance;
+    } else {
+      var calculatedDistance = peg1.position.quadDistance(peg2.position);
+      this.distance.get(peg1.id).set(peg2.id, calculatedDistance);
+      if (!this.distance.get(peg2.id)) this.distance.set(peg2.id, new Map());
+      this.distance.get(peg2.id).set(peg1.id, calculatedDistance);
+      return calculatedDistance;
+    }
+  };
+
+  return DistanceMap;
+}();
+
+exports["default"] = DistanceMap;
+},{}],"src/flock/hunter.ts":[function(require,module,exports) {
 "use strict";
 
 var __importDefault = this && this.__importDefault || function (mod) {
@@ -513,15 +606,15 @@ var sprite_1 = __importDefault(require("../engine/view/sprite"));
 var Hunter =
 /** @class */
 function () {
-  function Hunter() {
-    this.peg = new peg_1["default"](new point2d_1["default"](0, 0.5), new point2d_1["default"](0.0001, 0.0002));
-    this.sprite = new sprite_1["default"](document.documentElement, 'hunter', new point2d_1["default"](0.1, 0.1));
+  function Hunter(id) {
+    this.id = id;
+    this.peg = new peg_1["default"]('hunter--peg', new point2d_1["default"](0, 0), new point2d_1["default"](1, 1).normalize(0.0004));
+    this.sprite = new sprite_1["default"](document.documentElement, 'hunter', new point2d_1["default"](0.05, 0.05));
   }
 
-  Hunter.prototype.update = function (step, boardRatio) {
-    // follow the nearest bird --------
+  Hunter.prototype.plan = function (step) {
     var birds = this.world.getItems('bird');
-    var nearestDistance = 9999;
+    var nearestDistance = 1;
     var nearestBird = null;
 
     for (var _i = 0, birds_1 = birds; _i < birds_1.length; _i++) {
@@ -535,19 +628,11 @@ function () {
     }
 
     var directionToBird = nearestBird.peg.position.substract(this.peg.position);
-    var directionOrientation = directionToBird.orientationDeg();
-    var hunterOrientation = this.peg.heading.orientationDeg();
-    var orientationDiff = directionOrientation - hunterOrientation;
+    this.movementWish = this.peg.heading.rotateTowards(directionToBird, step / 3);
+  };
 
-    if (orientationDiff > 15) {
-      this.peg.heading = this.peg.heading.rotateDeg(15);
-    } else if (orientationDiff < -15) {
-      this.peg.heading = this.peg.heading.rotateDeg(-15);
-    } else {
-      this.peg.heading = this.peg.heading.rotateDeg(orientationDiff);
-    } // --------
-
-
+  Hunter.prototype.move = function (step, boardRatio) {
+    this.peg.heading = this.movementWish;
     this.peg.executeMovement(step).bounceOfWalls(boardRatio);
   };
 
@@ -574,11 +659,14 @@ var engine_1 = __importDefault(require("./engine"));
 
 var bird_1 = __importDefault(require("./flock/bird"));
 
+var distance_map_1 = __importDefault(require("./engine/physics/distance_map"));
+
 var hunter_1 = __importDefault(require("./flock/hunter"));
 
 var engine = new engine_1["default"]();
-engine.spawn(new bird_1["default"](0.75), ['bird']).spawn(new bird_1["default"](-0.5), ['bird']).spawn(new bird_1["default"](0.25), ['bird']).spawn(new hunter_1["default"]()).start();
-},{"./engine":"src/engine/index.ts","./flock/bird":"src/flock/bird.ts","./flock/hunter":"src/flock/hunter.ts"}],"node_modules/parcel/src/builtins/hmr-runtime.js":[function(require,module,exports) {
+var birdsDistanceMap = new distance_map_1["default"]();
+engine.spawn(new bird_1["default"]('bird1'), ['bird']).spawn(new bird_1["default"]('bird2'), ['bird']).spawn(new bird_1["default"]('bird3'), ['bird']).spawn(new bird_1["default"]('bird4'), ['bird']).spawn(new bird_1["default"]('bird5'), ['bird']).spawn(new bird_1["default"]('bird6'), ['bird']).spawn(new bird_1["default"]('bird7'), ['bird']).spawn(new bird_1["default"]('bird8'), ['bird']).spawn(new bird_1["default"]('bird9'), ['bird']).spawn(new bird_1["default"]('bird10'), ['bird']).spawn(new bird_1["default"]('bird11'), ['bird']).spawn(new bird_1["default"]('bird12'), ['bird']).spawn(new bird_1["default"]('bird13'), ['bird']).spawn(new bird_1["default"]('bird14'), ['bird']).spawn(new bird_1["default"]('bird15'), ['bird']).spawn(new bird_1["default"]('bird16'), ['bird']).spawn(new bird_1["default"]('bird17'), ['bird']).spawn(new bird_1["default"]('bird18'), ['bird']).spawn(new bird_1["default"]('bird19'), ['bird']).spawn(new bird_1["default"]('bird20'), ['bird']).spawn(new bird_1["default"]('bird21'), ['bird']).spawn(new bird_1["default"]('bird22'), ['bird']).spawn(new bird_1["default"]('bird23'), ['bird']).spawn(new bird_1["default"]('bird24'), ['bird']).spawn(new bird_1["default"]('bird25'), ['bird']).spawn(new bird_1["default"]('bird26'), ['bird']).spawn(new bird_1["default"]('bird27'), ['bird']).spawn(new bird_1["default"]('bird28'), ['bird']).spawn(new bird_1["default"]('bird29'), ['bird']).spawn(new bird_1["default"]('bird30'), ['bird']).spawn(new bird_1["default"]('bird31'), ['bird']).spawn(new bird_1["default"]('bird32'), ['bird']).spawn(new bird_1["default"]('bird33'), ['bird']).spawn(new bird_1["default"]('bird34'), ['bird']).spawn(new bird_1["default"]('bird35'), ['bird']).spawn(new bird_1["default"]('bird36'), ['bird']).spawn(new bird_1["default"]('bird37'), ['bird']).spawn(new bird_1["default"]('bird38'), ['bird']).spawn(new bird_1["default"]('bird39'), ['bird']).spawn(new bird_1["default"]('bird40'), ['bird']).spawn(new hunter_1["default"]('hunter')).start();
+},{"./engine":"src/engine/index.ts","./flock/bird":"src/flock/bird.ts","./engine/physics/distance_map":"src/engine/physics/distance_map.ts","./flock/hunter":"src/flock/hunter.ts"}],"node_modules/parcel/src/builtins/hmr-runtime.js":[function(require,module,exports) {
 var global = arguments[3];
 var OVERLAY_ID = '__parcel__error__overlay__';
 var OldModule = module.bundle.Module;
@@ -605,7 +693,7 @@ var parent = module.bundle.parent;
 if ((!parent || !parent.isParcelRequire) && typeof WebSocket !== 'undefined') {
   var hostname = "" || location.hostname;
   var protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-  var ws = new WebSocket(protocol + '://' + hostname + ':' + "53111" + '/');
+  var ws = new WebSocket(protocol + '://' + hostname + ':' + "49527" + '/');
 
   ws.onmessage = function (event) {
     var data = JSON.parse(event.data);
