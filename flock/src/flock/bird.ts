@@ -6,7 +6,7 @@ import Peg from '../engine/physics/peg';
 import Sprite from '../engine/view/sprite';
 import World from '../engine/world';
 import FlockAI from '../engine/ai/flock_ai';
-import EscapeNearestAI from '../engine/ai/escape_ai';
+import EscapeNearestAI from '../engine/ai/escape_nearest_ai';
 
 export default class Bird implements Item {
   public peg: Peg;

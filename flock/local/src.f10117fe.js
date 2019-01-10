@@ -606,7 +606,7 @@ function () {
 }();
 
 exports["default"] = FlockAI;
-},{"../geometry/point2d":"src/engine/geometry/point2d.ts"}],"src/engine/ai/escape_ai.ts":[function(require,module,exports) {
+},{"../geometry/point2d":"src/engine/geometry/point2d.ts"}],"src/engine/ai/escape_nearest_ai.ts":[function(require,module,exports) {
 "use strict";
 
 exports.__esModule = true;
@@ -681,7 +681,7 @@ var sprite_1 = __importDefault(require("../engine/view/sprite"));
 
 var flock_ai_1 = __importDefault(require("../engine/ai/flock_ai"));
 
-var escape_ai_1 = __importDefault(require("../engine/ai/escape_ai"));
+var escape_nearest_ai_1 = __importDefault(require("../engine/ai/escape_nearest_ai"));
 
 var Bird =
 /** @class */
@@ -689,7 +689,7 @@ function () {
   function Bird(world) {
     this._world = world;
     this._flockAI = new flock_ai_1["default"](world, this, 'bird');
-    this._escapeAI = new escape_ai_1["default"](world, this, 'hunter');
+    this._escapeAI = new escape_nearest_ai_1["default"](world, this, 'hunter');
     this.peg = new peg_1["default"](new point2d_1["default"](Math.random(), Math.random()), new point2d_1["default"](Math.random() - 0.5, Math.random() - 0.5).normalize(0.0002));
     this.sprite = new sprite_1["default"](document.documentElement, 'bird', new point2d_1["default"](0.005, 0.005));
   }
@@ -716,7 +716,7 @@ function () {
 }();
 
 exports["default"] = Bird;
-},{"../engine/geometry/point2d":"src/engine/geometry/point2d.ts","../engine/physics/peg":"src/engine/physics/peg.ts","../engine/view/sprite":"src/engine/view/sprite.ts","../engine/ai/flock_ai":"src/engine/ai/flock_ai.ts","../engine/ai/escape_ai":"src/engine/ai/escape_ai.ts"}],"src/engine/ai/turn_to_three_nearest_ai.ts":[function(require,module,exports) {
+},{"../engine/geometry/point2d":"src/engine/geometry/point2d.ts","../engine/physics/peg":"src/engine/physics/peg.ts","../engine/view/sprite":"src/engine/view/sprite.ts","../engine/ai/flock_ai":"src/engine/ai/flock_ai.ts","../engine/ai/escape_nearest_ai":"src/engine/ai/escape_nearest_ai.ts"}],"src/engine/ai/turn_to_three_nearest_ai.ts":[function(require,module,exports) {
 "use strict";
 
 var __importDefault = this && this.__importDefault || function (mod) {
