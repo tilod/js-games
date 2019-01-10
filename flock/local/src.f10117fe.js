@@ -212,17 +212,17 @@ var Engine =
 /** @class */
 function () {
   function Engine() {
-    this.browserWindow = new browser_window_1["default"]();
-    this.world = new world_1["default"]();
+    this._browserWindow = new browser_window_1["default"]();
+    this._world = new world_1["default"]();
   }
 
-  Engine.prototype.spawn = function (item, tags) {
+  Engine.prototype.spawn = function (itemConstructor, tags) {
     if (tags === void 0) {
       tags = [];
     }
 
-    item.world = this.world;
-    this.world.addItem(item, tags);
+    this._world.addItem(new itemConstructor(this._world), tags);
+
     return this;
   };
 
@@ -230,11 +230,11 @@ function () {
     var _this = this;
 
     var loop = function loop(timestamp) {
-      _this.browserWindow.update();
+      _this._browserWindow.update();
 
       var step = timestamp - lastRender;
 
-      _this.plan(step).move(step).render();
+      _this.plan().move(step).render();
 
       lastRender = timestamp;
       window.requestAnimationFrame(loop);
@@ -244,10 +244,10 @@ function () {
     window.requestAnimationFrame(loop);
   };
 
-  Engine.prototype.plan = function (step) {
-    for (var _i = 0, _a = this.world.getItems(); _i < _a.length; _i++) {
+  Engine.prototype.plan = function () {
+    for (var _i = 0, _a = this._world.getItems(); _i < _a.length; _i++) {
       var item = _a[_i];
-      item.plan(step);
+      item.plan();
     }
 
     return this;
@@ -256,9 +256,9 @@ function () {
   ;
 
   Engine.prototype.move = function (step) {
-    for (var _i = 0, _a = this.world.getItems(); _i < _a.length; _i++) {
+    for (var _i = 0, _a = this._world.getItems(); _i < _a.length; _i++) {
       var item = _a[_i];
-      item.move(step, this.browserWindow.viewportRatio);
+      item.move(step, this._browserWindow.viewportRatio);
     }
 
     return this;
@@ -267,9 +267,9 @@ function () {
   ;
 
   Engine.prototype.render = function () {
-    for (var _i = 0, _a = this.world.getItems(); _i < _a.length; _i++) {
+    for (var _i = 0, _a = this._world.getItems(); _i < _a.length; _i++) {
       var item = _a[_i];
-      item.render(this.browserWindow);
+      item.render(this._browserWindow);
     }
 
     ;
@@ -357,10 +357,6 @@ function () {
     return this.rotateRad(angle);
   };
 
-  Point2D.prototype.rotateTowards = function (other, maxTurnRate) {
-    return this.rotateDegMax(other.orientationDeg() - this.orientationDeg(), maxTurnRate);
-  };
-
   Point2D.prototype.length = function () {
     return Math.sqrt(this.x * this.x + this.y * this.y);
   };
@@ -377,12 +373,20 @@ function () {
     return this.x * other.x + this.y * other.y;
   };
 
+  Point2D.prototype.angleRad = function (other) {
+    return Math.acos(this.dot(other) / (this.length() * other.length()));
+  };
+
+  Point2D.prototype.angleDeg = function (other) {
+    return this.angleRad(other) * 180 / Math.PI;
+  };
+
   Point2D.prototype.orientationDeg = function () {
-    return (this.y < 0 ? 180 : 0) - this.angleRad() * 180 / Math.PI;
+    return (this.y < 0 ? 180 : 0) - Math.atan(this.x / this.y) * 180 / Math.PI;
   };
 
   Point2D.prototype.orientationRad = function () {
-    return (this.y < 0 ? Math.PI : 0) - this.angleRad();
+    return (this.y < 0 ? Math.PI : 0) - Math.atan(this.x / this.y);
   };
 
   Point2D.prototype.quadDistance = function (other) {
@@ -391,11 +395,10 @@ function () {
 
   Point2D.prototype.distance = function (other) {
     return Math.sqrt(this.quadDistance(other));
-  }; // private --------
+  };
 
-
-  Point2D.prototype.angleRad = function () {
-    return Math.atan(this.x / this.y);
+  Point2D.prototype.interpolate = function (other, loading) {
+    return this.multiply(1 - loading).add(other.multiply(loading));
   };
 
   return Point2D;
@@ -418,7 +421,7 @@ var point2d_1 = __importDefault(require("../geometry/point2d"));
 var Peg =
 /** @class */
 function () {
-  function Peg(id, position, heading) {
+  function Peg(position, heading) {
     if (position === void 0) {
       position = new point2d_1["default"](0, 0);
     }
@@ -427,26 +430,66 @@ function () {
       heading = new point2d_1["default"](0, 0);
     }
 
-    this.id = id;
     this.position = position;
     this.heading = heading;
   }
 
-  Peg.prototype.executeMovement = function (step) {
-    this.position = this.position.add(new point2d_1["default"](step * this.heading.x, step * this.heading.y));
+  Peg.prototype.setupFrame = function (step, boardRatio) {
+    this._step = step;
+    this._boardRatio = boardRatio;
     return this;
   };
 
-  Peg.prototype.bounceOfWalls = function (boardRatio) {
+  Peg.prototype.turn = function (direction) {
+    this.heading = direction.normalize(this.headingLength());
+    return this;
+  };
+
+  Peg.prototype.turnWithMax = function (direction, maxTurnRate) {
+    var angle = this.heading.angleDeg(direction);
+    var maxTurnAngle = this.step * maxTurnRate / 1000;
+
+    if (angle > maxTurnAngle) {
+      return this.turn(this.heading.interpolate(direction.normalize(this.headingLength()), maxTurnAngle / angle));
+    } else {
+      return this.turn(direction);
+    }
+  };
+
+  Peg.prototype.executeMovement = function () {
+    this.position = this.position.add(new point2d_1["default"](this.step * this.heading.x, this.step * this.heading.y));
+    return this;
+  };
+
+  Peg.prototype.bounceOfWalls = function () {
     if (this.position.x < 0 && this.heading.x < 0 || this.position.x > 1 && this.heading.x > 0) {
       this.heading = this.heading.mirrorVertical();
     }
 
-    if (this.position.y < 0 && this.heading.y < 0 || this.position.y > boardRatio && this.heading.y > 0) {
+    if (this.position.y < 0 && this.heading.y < 0 || this.position.y > this.boardRatio && this.heading.y > 0) {
       this.heading = this.heading.mirrorHorizontal();
     }
 
     return this;
+  };
+
+  Object.defineProperty(Peg.prototype, "step", {
+    get: function get() {
+      return this._step;
+    },
+    enumerable: true,
+    configurable: true
+  });
+  Object.defineProperty(Peg.prototype, "boardRatio", {
+    get: function get() {
+      return this._boardRatio;
+    },
+    enumerable: true,
+    configurable: true
+  });
+
+  Peg.prototype.headingLength = function () {
+    return this._headingLength || (this._headingLength = this.heading.length());
   };
 
   return Peg;
@@ -487,6 +530,138 @@ function () {
 }();
 
 exports["default"] = Sprite;
+},{}],"src/engine/ai/flock_ai.ts":[function(require,module,exports) {
+"use strict";
+
+var __importDefault = this && this.__importDefault || function (mod) {
+  return mod && mod.__esModule ? mod : {
+    "default": mod
+  };
+};
+
+exports.__esModule = true;
+
+var point2d_1 = __importDefault(require("../geometry/point2d"));
+
+var FlockAI =
+/** @class */
+function () {
+  function FlockAI(world, item, tag, _a) {
+    var _b = _a === void 0 ? {} : _a,
+        _c = _b.cohesionDistance,
+        cohesionDistance = _c === void 0 ? 0.2 : _c,
+        _d = _b.cohesionWeight,
+        cohesionWeight = _d === void 0 ? 1 : _d,
+        _e = _b.alignmentDistance,
+        alignmentDistance = _e === void 0 ? 0.1 : _e,
+        _f = _b.alignmentWeight,
+        alignmentWeight = _f === void 0 ? 2 : _f,
+        _g = _b.separationDistance,
+        separationDistance = _g === void 0 ? 0.01 : _g,
+        _h = _b.separationWeight,
+        separationWeight = _h === void 0 ? 4 : _h;
+
+    this._world = world;
+    this._item = item;
+    this._tag = tag;
+    this._quadCohesionDistance = cohesionDistance * cohesionDistance;
+    this._cohesionWeight = cohesionWeight;
+    this._quadAlignmentDistance = alignmentDistance * alignmentDistance;
+    this._alignmentWeight = alignmentWeight, this._quadSeparationDistance = separationDistance * separationDistance;
+    this._separationWeight = separationWeight;
+  }
+
+  FlockAI.prototype.direction = function () {
+    var position = this._item.peg.position;
+    var heading = this._item.peg.heading;
+    var cohesionNeighborCount = 1;
+    var cohesionPosition = position;
+    var alignmentNeighborCount = 1;
+    var alignmentHeading = heading;
+    var separationNeighborCount = 0;
+    var separationPosition = new point2d_1["default"](0, 0);
+
+    for (var _i = 0, _a = this._world.getItems(this._tag); _i < _a.length; _i++) {
+      var item = _a[_i];
+      if (item === this._item) continue;
+      var quadDistance = position.quadDistance(item.peg.position);
+      if (quadDistance > this._quadCohesionDistance) continue;
+      ++cohesionNeighborCount;
+      cohesionPosition = cohesionPosition.add(item.peg.position);
+      if (quadDistance > this._quadAlignmentDistance) continue;
+      ++alignmentNeighborCount;
+      alignmentHeading = alignmentHeading.add(item.peg.heading);
+      if (quadDistance > this._quadSeparationDistance) continue;
+      ++separationNeighborCount;
+      separationPosition = separationPosition.add(item.peg.position.substract(position));
+    }
+
+    var cohesionDirection = cohesionNeighborCount > 1 ? cohesionPosition.divide(cohesionNeighborCount).substract(position).normalize(this._cohesionWeight) : heading.normalize(1);
+    var alignmentDirection = alignmentNeighborCount > 2 ? alignmentHeading.divide(alignmentNeighborCount).normalize(this._alignmentWeight) : heading.normalize(1);
+    var separationDirection = separationNeighborCount > 0 ? separationPosition.divide(separationNeighborCount).negate().normalize(this._separationWeight) : heading.normalize(1);
+    return cohesionDirection.add(alignmentDirection).add(separationDirection);
+  };
+
+  return FlockAI;
+}();
+
+exports["default"] = FlockAI;
+},{"../geometry/point2d":"src/engine/geometry/point2d.ts"}],"src/engine/ai/escape_ai.ts":[function(require,module,exports) {
+"use strict";
+
+exports.__esModule = true;
+
+var EscapeNearestAI =
+/** @class */
+function () {
+  function EscapeNearestAI(world, item, tag, _a) {
+    var _b = _a === void 0 ? {} : _a,
+        _c = _b.escapeDistance,
+        escapeDistance = _c === void 0 ? 0.1 : _c,
+        _d = _b.escapeWeight,
+        escapeWeight = _d === void 0 ? 16 : _d;
+
+    this._world = world;
+    this._item = item;
+    this._tag = tag;
+    this._quadEscapeDistance = escapeDistance * escapeDistance;
+    this._escapeWeight = escapeWeight;
+  }
+
+  EscapeNearestAI.prototype.direction = function () {
+    var position = this._item.peg.position;
+
+    var hunters = this._world.getItems(this._tag);
+
+    var nearestDistance = 1;
+    var nearestHunter = null;
+    var escapeDirection = null;
+    var escapeMode = false;
+
+    for (var _i = 0, hunters_1 = hunters; _i < hunters_1.length; _i++) {
+      var hunter = hunters_1[_i];
+      var distance = position.quadDistance(hunter.peg.position);
+
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        nearestHunter = hunter;
+      }
+    }
+
+    if (nearestDistance < this._quadEscapeDistance) {
+      escapeMode = true;
+      escapeDirection = nearestHunter.peg.position.substract(position).negate().normalize(this._escapeWeight);
+    } else {
+      escapeDirection = this._item.peg.heading;
+    }
+
+    return [escapeDirection, escapeMode];
+  };
+
+  return EscapeNearestAI;
+}();
+
+exports["default"] = EscapeNearestAI;
 },{}],"src/flock/bird.ts":[function(require,module,exports) {
 "use strict";
 
@@ -504,47 +679,33 @@ var peg_1 = __importDefault(require("../engine/physics/peg"));
 
 var sprite_1 = __importDefault(require("../engine/view/sprite"));
 
+var flock_ai_1 = __importDefault(require("../engine/ai/flock_ai"));
+
+var escape_ai_1 = __importDefault(require("../engine/ai/escape_ai"));
+
 var Bird =
 /** @class */
 function () {
-  function Bird(id) {
-    this.id = id;
-    this.peg = new peg_1["default"](id + '--peg', new point2d_1["default"](Math.random(), Math.random()), new point2d_1["default"](Math.random(), Math.random()).normalize(0.0002));
+  function Bird(world) {
+    this._world = world;
+    this._flockAI = new flock_ai_1["default"](world, this, 'bird');
+    this._escapeAI = new escape_ai_1["default"](world, this, 'hunter');
+    this.peg = new peg_1["default"](new point2d_1["default"](Math.random(), Math.random()), new point2d_1["default"](Math.random() - 0.5, Math.random() - 0.5).normalize(0.0002));
     this.sprite = new sprite_1["default"](document.documentElement, 'bird', new point2d_1["default"](0.005, 0.005));
   }
 
-  Bird.prototype.plan = function (step) {
-    var cohesionNeighborCount = 1;
-    var cohesionPosition = this.peg.position;
-    var alignmentNeighborCount = 1;
-    var alignmentHeading = this.peg.heading;
-    var separationNeighborCount = 0;
-    var separationPosition = new point2d_1["default"](0, 0);
+  Bird.prototype.plan = function () {
+    var _a = this._escapeAI.direction(),
+        escapeDirection = _a[0],
+        escapeMode = _a[1];
 
-    for (var _i = 0, _a = this.world.getItems('bird'); _i < _a.length; _i++) {
-      var item = _a[_i];
-      if (item === this) continue;
-      var quadDistance = this.peg.position.quadDistance(item.peg.position);
-      if (quadDistance > 0.04) continue;
-      ++cohesionNeighborCount;
-      cohesionPosition = cohesionPosition.add(item.peg.position);
-      if (quadDistance > 0.01) continue;
-      ++alignmentNeighborCount;
-      alignmentHeading = alignmentHeading.add(item.peg.heading);
-      if (quadDistance > 0.00025) continue;
-      ++separationNeighborCount;
-      separationPosition = separationPosition.add(item.peg.position.substract(this.peg.position));
-    }
-
-    var cohesionDirection = cohesionNeighborCount > 1 ? cohesionPosition.divide(cohesionNeighborCount).substract(this.peg.position).normalize(1) : this.peg.heading.normalize(1);
-    var alignmentDirection = alignmentHeading.divide(alignmentNeighborCount).normalize(4);
-    var separationDirection = separationNeighborCount > 0 ? separationPosition.divide(separationNeighborCount).negate().normalize(2) : this.peg.heading.normalize(2);
-    this.movementWish = cohesionDirection.add(alignmentDirection).add(separationDirection).normalize(0.0002);
+    this._turnTo = this._flockAI.direction().add(escapeDirection);
+    this._escapeMode = escapeMode;
   };
 
   Bird.prototype.move = function (step, boardRatio) {
-    this.peg.heading = this.movementWish;
-    this.peg.executeMovement(step).bounceOfWalls(boardRatio);
+    var maxTurnRate = this._escapeMode ? 1020 : 360;
+    this.peg.setupFrame(step, boardRatio).turnWithMax(this._turnTo, maxTurnRate).executeMovement().bounceOfWalls();
   };
 
   Bird.prototype.render = function (browserWindow) {
@@ -555,38 +716,74 @@ function () {
 }();
 
 exports["default"] = Bird;
-},{"../engine/geometry/point2d":"src/engine/geometry/point2d.ts","../engine/physics/peg":"src/engine/physics/peg.ts","../engine/view/sprite":"src/engine/view/sprite.ts"}],"src/engine/physics/distance_map.ts":[function(require,module,exports) {
+},{"../engine/geometry/point2d":"src/engine/geometry/point2d.ts","../engine/physics/peg":"src/engine/physics/peg.ts","../engine/view/sprite":"src/engine/view/sprite.ts","../engine/ai/flock_ai":"src/engine/ai/flock_ai.ts","../engine/ai/escape_ai":"src/engine/ai/escape_ai.ts"}],"src/engine/ai/turn_to_three_nearest_ai.ts":[function(require,module,exports) {
 "use strict";
+
+var __importDefault = this && this.__importDefault || function (mod) {
+  return mod && mod.__esModule ? mod : {
+    "default": mod
+  };
+};
 
 exports.__esModule = true;
 
-var DistanceMap =
+var point2d_1 = __importDefault(require("../geometry/point2d"));
+
+var TurnToThreeNearestAI =
 /** @class */
 function () {
-  function DistanceMap() {
-    this.distance = new Map();
+  function TurnToThreeNearestAI(world, item, tag) {
+    this._world = world;
+    this._item = item;
+    this._tag = tag;
   }
 
-  DistanceMap.prototype.distanceBetween = function (peg1, peg2) {
-    if (!this.distance.get(peg1.id)) this.distance.set(peg1.id, new Map());
-    var savedDistance = this.distance.get(peg1.id).get(peg2.id);
+  TurnToThreeNearestAI.prototype.direction = function () {
+    var position = this._item.peg.position;
 
-    if (savedDistance) {
-      return savedDistance;
-    } else {
-      var calculatedDistance = peg1.position.quadDistance(peg2.position);
-      this.distance.get(peg1.id).set(peg2.id, calculatedDistance);
-      if (!this.distance.get(peg2.id)) this.distance.set(peg2.id, new Map());
-      this.distance.get(peg2.id).set(peg1.id, calculatedDistance);
-      return calculatedDistance;
+    var items = this._world.getItems(this._tag);
+
+    var nearestDistance = 1;
+    var nearestItem = null;
+    var secondNearestDistance = 1.1;
+    var secondNearestItem = null;
+    var thirdNearestDistance = 1.2;
+    var thirdNearestItem = null;
+
+    for (var _i = 0, items_1 = items; _i < items_1.length; _i++) {
+      var item = items_1[_i];
+      var distance = position.quadDistance(item.peg.position);
+
+      if (distance < thirdNearestDistance) {
+        if (distance < secondNearestDistance) {
+          if (distance < nearestDistance) {
+            thirdNearestDistance = secondNearestDistance;
+            thirdNearestItem = secondNearestItem;
+            secondNearestDistance = nearestDistance;
+            nearestDistance = distance;
+            secondNearestItem = nearestItem;
+            nearestItem = item;
+          } else {
+            thirdNearestDistance = secondNearestDistance;
+            thirdNearestItem = secondNearestItem;
+            secondNearestDistance = distance;
+            secondNearestItem = item;
+          }
+        } else {
+          thirdNearestDistance = distance;
+          thirdNearestItem = item;
+        }
+      }
     }
+
+    return point2d_1["default"].center([nearestItem.peg.position, secondNearestItem.peg.position, thirdNearestItem.peg.position]).substract(position);
   };
 
-  return DistanceMap;
+  return TurnToThreeNearestAI;
 }();
 
-exports["default"] = DistanceMap;
-},{}],"src/flock/hunter.ts":[function(require,module,exports) {
+exports["default"] = TurnToThreeNearestAI;
+},{"../geometry/point2d":"src/engine/geometry/point2d.ts"}],"src/flock/hunter.ts":[function(require,module,exports) {
 "use strict";
 
 var __importDefault = this && this.__importDefault || function (mod) {
@@ -603,37 +800,24 @@ var peg_1 = __importDefault(require("../engine/physics/peg"));
 
 var sprite_1 = __importDefault(require("../engine/view/sprite"));
 
+var turn_to_three_nearest_ai_1 = __importDefault(require("../engine/ai/turn_to_three_nearest_ai"));
+
 var Hunter =
 /** @class */
 function () {
-  function Hunter(id) {
-    this.id = id;
-    this.peg = new peg_1["default"]('hunter--peg', new point2d_1["default"](0, 0), new point2d_1["default"](1, 1).normalize(0.0004));
-    this.sprite = new sprite_1["default"](document.documentElement, 'hunter', new point2d_1["default"](0.05, 0.05));
+  function Hunter(world) {
+    this._world = world;
+    this._followAI = new turn_to_three_nearest_ai_1["default"](world, this, 'bird');
+    this.peg = new peg_1["default"](new point2d_1["default"](Math.random(), Math.random()), new point2d_1["default"](Math.random() - 0.5, Math.random() - 0.5).normalize(0.0003));
+    this.sprite = new sprite_1["default"](document.documentElement, 'hunter', new point2d_1["default"](0.02, 0.02));
   }
 
-  Hunter.prototype.plan = function (step) {
-    var birds = this.world.getItems('bird');
-    var nearestDistance = 1;
-    var nearestBird = null;
-
-    for (var _i = 0, birds_1 = birds; _i < birds_1.length; _i++) {
-      var bird = birds_1[_i];
-      var distance = this.peg.position.quadDistance(bird.peg.position);
-
-      if (distance < nearestDistance) {
-        nearestDistance = distance;
-        nearestBird = bird;
-      }
-    }
-
-    var directionToBird = nearestBird.peg.position.substract(this.peg.position);
-    this.movementWish = this.peg.heading.rotateTowards(directionToBird, step / 3);
+  Hunter.prototype.plan = function () {
+    this._turnTo = this._followAI.direction();
   };
 
   Hunter.prototype.move = function (step, boardRatio) {
-    this.peg.heading = this.movementWish;
-    this.peg.executeMovement(step).bounceOfWalls(boardRatio);
+    this.peg.setupFrame(step, boardRatio).turnWithMax(this._turnTo, 360).executeMovement().bounceOfWalls();
   };
 
   Hunter.prototype.render = function (browserWindow) {
@@ -644,7 +828,7 @@ function () {
 }();
 
 exports["default"] = Hunter;
-},{"../engine/geometry/point2d":"src/engine/geometry/point2d.ts","../engine/physics/peg":"src/engine/physics/peg.ts","../engine/view/sprite":"src/engine/view/sprite.ts"}],"src/index.ts":[function(require,module,exports) {
+},{"../engine/geometry/point2d":"src/engine/geometry/point2d.ts","../engine/physics/peg":"src/engine/physics/peg.ts","../engine/view/sprite":"src/engine/view/sprite.ts","../engine/ai/turn_to_three_nearest_ai":"src/engine/ai/turn_to_three_nearest_ai.ts"}],"src/index.ts":[function(require,module,exports) {
 "use strict";
 
 var __importDefault = this && this.__importDefault || function (mod) {
@@ -659,14 +843,18 @@ var engine_1 = __importDefault(require("./engine"));
 
 var bird_1 = __importDefault(require("./flock/bird"));
 
-var distance_map_1 = __importDefault(require("./engine/physics/distance_map"));
-
 var hunter_1 = __importDefault(require("./flock/hunter"));
 
 var engine = new engine_1["default"]();
-var birdsDistanceMap = new distance_map_1["default"]();
-engine.spawn(new bird_1["default"]('bird1'), ['bird']).spawn(new bird_1["default"]('bird2'), ['bird']).spawn(new bird_1["default"]('bird3'), ['bird']).spawn(new bird_1["default"]('bird4'), ['bird']).spawn(new bird_1["default"]('bird5'), ['bird']).spawn(new bird_1["default"]('bird6'), ['bird']).spawn(new bird_1["default"]('bird7'), ['bird']).spawn(new bird_1["default"]('bird8'), ['bird']).spawn(new bird_1["default"]('bird9'), ['bird']).spawn(new bird_1["default"]('bird10'), ['bird']).spawn(new bird_1["default"]('bird11'), ['bird']).spawn(new bird_1["default"]('bird12'), ['bird']).spawn(new bird_1["default"]('bird13'), ['bird']).spawn(new bird_1["default"]('bird14'), ['bird']).spawn(new bird_1["default"]('bird15'), ['bird']).spawn(new bird_1["default"]('bird16'), ['bird']).spawn(new bird_1["default"]('bird17'), ['bird']).spawn(new bird_1["default"]('bird18'), ['bird']).spawn(new bird_1["default"]('bird19'), ['bird']).spawn(new bird_1["default"]('bird20'), ['bird']).spawn(new bird_1["default"]('bird21'), ['bird']).spawn(new bird_1["default"]('bird22'), ['bird']).spawn(new bird_1["default"]('bird23'), ['bird']).spawn(new bird_1["default"]('bird24'), ['bird']).spawn(new bird_1["default"]('bird25'), ['bird']).spawn(new bird_1["default"]('bird26'), ['bird']).spawn(new bird_1["default"]('bird27'), ['bird']).spawn(new bird_1["default"]('bird28'), ['bird']).spawn(new bird_1["default"]('bird29'), ['bird']).spawn(new bird_1["default"]('bird30'), ['bird']).spawn(new bird_1["default"]('bird31'), ['bird']).spawn(new bird_1["default"]('bird32'), ['bird']).spawn(new bird_1["default"]('bird33'), ['bird']).spawn(new bird_1["default"]('bird34'), ['bird']).spawn(new bird_1["default"]('bird35'), ['bird']).spawn(new bird_1["default"]('bird36'), ['bird']).spawn(new bird_1["default"]('bird37'), ['bird']).spawn(new bird_1["default"]('bird38'), ['bird']).spawn(new bird_1["default"]('bird39'), ['bird']).spawn(new bird_1["default"]('bird40'), ['bird']).spawn(new hunter_1["default"]('hunter')).start();
-},{"./engine":"src/engine/index.ts","./flock/bird":"src/flock/bird.ts","./engine/physics/distance_map":"src/engine/physics/distance_map.ts","./flock/hunter":"src/flock/hunter.ts"}],"node_modules/parcel/src/builtins/hmr-runtime.js":[function(require,module,exports) {
+
+for (var i = 0; i < 100; ++i) {
+  engine.spawn(bird_1["default"], ['bird']);
+}
+
+engine.spawn(hunter_1["default"], ['hunter']);
+engine.spawn(hunter_1["default"], ['hunter']);
+engine.start();
+},{"./engine":"src/engine/index.ts","./flock/bird":"src/flock/bird.ts","./flock/hunter":"src/flock/hunter.ts"}],"node_modules/parcel/src/builtins/hmr-runtime.js":[function(require,module,exports) {
 var global = arguments[3];
 var OVERLAY_ID = '__parcel__error__overlay__';
 var OldModule = module.bundle.Module;
@@ -693,7 +881,7 @@ var parent = module.bundle.parent;
 if ((!parent || !parent.isParcelRequire) && typeof WebSocket !== 'undefined') {
   var hostname = "" || location.hostname;
   var protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-  var ws = new WebSocket(protocol + '://' + hostname + ':' + "49527" + '/');
+  var ws = new WebSocket(protocol + '://' + hostname + ':' + "49592" + '/');
 
   ws.onmessage = function (event) {
     var data = JSON.parse(event.data);

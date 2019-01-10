@@ -5,49 +5,40 @@ import Point2D from '../engine/geometry/point2d';
 import Peg from '../engine/physics/peg';
 import Sprite from '../engine/view/sprite';
 import World from '../engine/world';
+import TurnToThreeNearestAI from '../engine/ai/turn_to_three_nearest_ai';
 
 export default class Hunter implements Item {
-  public readonly id: String;
-  public world: World;
   public peg: Peg;
   public sprite: Sprite;
 
-  private movementWish: Point2D;
+  private _world: World;
+  private _followAI: TurnToThreeNearestAI;
+  private _turnTo: Point2D;
 
-  constructor(id: String) {
-    this.id = id;
+  constructor(world: World) {
+    this._world = world;
+    this._followAI = new TurnToThreeNearestAI(world, this, 'bird');
+
     this.peg =
       new Peg(
-        'hunter--peg',
-        new Point2D(0, 0),
-        new Point2D(1, 1).normalize(0.0004));
+        new Point2D(Math.random(), Math.random()),
+        new Point2D(Math.random() - 0.5, Math.random() - 0.5).normalize(0.0003),
+      );
+
     this.sprite =
-      new Sprite(document.documentElement, 'hunter', new Point2D(0.05, 0.05));
+      new Sprite(document.documentElement, 'hunter', new Point2D(0.02, 0.02));
   }
 
-  plan(step: number): void {
-    const birds: Array<Item> = this.world.getItems('bird');
-
-    let nearestDistance: number = 1;
-    let nearestBird: Item = null;
-    for (const bird of birds) {
-      const distance: number = this.peg.position.quadDistance(bird.peg.position);
-      if (distance < nearestDistance) {
-        nearestDistance = distance;
-        nearestBird = bird;
-      }
-    }
-
-    const directionToBird: Point2D = nearestBird.peg.position.substract(this.peg.position);
-    this.movementWish = this.peg.heading.rotateTowards(directionToBird, step / 3);
+  plan(): void {
+    this._turnTo = this._followAI.direction();
   }
 
   move(step: number, boardRatio: number): void {
-    this.peg.heading = this.movementWish;
-
     this.peg
-      .executeMovement(step)
-      .bounceOfWalls(boardRatio);
+      .setupFrame(step, boardRatio)
+      .turnWithMax(this._turnTo, 360)
+      .executeMovement()
+      .bounceOfWalls();
   }
 
   render(browserWindow: BrowserWindow): void {

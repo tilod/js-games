@@ -77,13 +77,6 @@ export default class Point2D {
     return this.rotateRad(angle);
   }
 
-  rotateTowards(other: Point2D, maxTurnRate: number): Point2D {
-    return this.rotateDegMax(
-      other.orientationDeg() - this.orientationDeg(),
-      maxTurnRate,
-    );
-  }
-
   length(): number {
     return Math.sqrt(this.x * this.x + this.y * this.y);
   }
@@ -96,12 +89,20 @@ export default class Point2D {
     return this.x * other.x + this.y * other.y;
   }
 
+  angleRad(other: Point2D): number {
+    return Math.acos(this.dot(other) / (this.length() * other.length()));
+  }
+
+  angleDeg(other: Point2D): number {
+    return this.angleRad(other) * 180/Math.PI;
+  }
+
   orientationDeg(): number {
-    return (this.y < 0 ? 180 : 0) - this.angleRad() * 180/Math.PI;
+    return (this.y < 0 ? 180 : 0) - Math.atan(this.x / this.y) * 180/Math.PI;
   }
 
   orientationRad(): number {
-    return (this.y < 0 ? Math.PI : 0) - this.angleRad();
+    return (this.y < 0 ? Math.PI : 0) - Math.atan(this.x / this.y);
   }
 
   quadDistance(other: Point2D): number {
@@ -112,9 +113,7 @@ export default class Point2D {
     return Math.sqrt(this.quadDistance(other));
   }
 
-  // private --------
-
-  private angleRad(): number {
-    return Math.atan(this.x / this.y);
+  interpolate(other: Point2D, loading: number) {
+    return this.multiply(1 - loading).add(other.multiply(loading));
   }
 }
